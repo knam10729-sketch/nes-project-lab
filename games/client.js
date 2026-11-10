@@ -1,3 +1,4 @@
+import { BONK_MS, dropLocalPops, labelForHole, noteLatest, pinLocalPop, whackKey } from "./mole-view.js";
 import { applyInk, partyTurn, remember, renderParty } from "./party.js";
 import { drawQr } from "./qr.js";
 
@@ -46,6 +47,9 @@ let skew = 0;
 let secret = null;
 let syncedEnd = false;
 let frame = 0;
+let molePops = [];
+const moleBonks = new Map();
+const seenWhacks = new Set();
 
 if (!meta) {
   app.append(el("p", { className: "lead", text: "없는 게임입니다." }), linkHome());
@@ -269,6 +273,9 @@ function connect() {
     if (message.type === "error") {
       setNote(message.error);
       latest?.position?.active?.forEach((mole) => { delete mole.sent; });
+      molePops = dropLocalPops(molePops);
+      for (const [hole, bonk] of moleBonks) if (bonk.local) moleBonks.delete(hole);
+      paintMoleHoles();
     }
   });
   ws.addEventListener("close", () => {
@@ -460,49 +467,88 @@ function openPromotion(choices) {
   document.body.append(dialog);
 }
 
+const HAMMER = `<svg class="hammer" viewBox="0 0 80 80" aria-hidden="true"><rect x="34" y="38" width="8" height="32" rx="4" fill="#e0a15a"/><rect x="36" y="42" width="3" height="24" rx="1.5" fill="#f3d2a2"/><rect x="8" y="14" width="56" height="28" rx="13" fill="#ff4b6e"/><rect x="14" y="18" width="24" height="8" rx="4" fill="#ffd0dc"/><circle cx="50" cy="28" r="4" fill="#ffe4ea"/></svg><span class="stars"><i></i><i></i><i></i></span>`;
+
 function renderMole(state) {
   const wrap = document.getElementById("board-wrap");
   let board = document.getElementById("board");
   if (!board || !board.classList.contains("moles")) {
     board = el("div", { className: "moles board", id: "board" });
     for (let hole = 0; hole < 9; hole += 1) {
+      const pit = el("div", { className: "pit" });
+      pit.dataset.hole = String(hole);
       const button = el("button", { className: "hole", type: "button" });
-      button.dataset.hole = String(hole);
       button.setAttribute("aria-label", `${hole + 1}번 구멍`);
-      button.append(el("span", { className: "mole-clip" }, [el("span", { className: "mole", "aria-hidden": "true" }, [el("i"), el("i")])]));
+      button.append(el("span", { className: "mole-clip" }, [
+        el("span", { className: "mole", "aria-hidden": "true" }, [
+          el("i"),
+          el("i"),
+          el("span", { className: "dizzy", "aria-hidden": "true" }, [el("b"), el("b")]),
+        ]),
+      ]));
+      const fx = el("span", { className: "hit-fx", "aria-hidden": "true" });
+      fx.innerHTML = HAMMER;
+      pit.append(button, fx, el("span", { className: "whack-pop", hidden: true }));
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         const active = latest?.position.active?.find((mole) => mole.hole === hole && serverNow() <= mole.expiresAt);
         if (!active || active.sent) return;
         active.sent = true;
+        const now = Date.now();
+        molePops = pinLocalPop(molePops, {
+          hole,
+          seat: mySeat,
+          name: latest?.seats?.[mySeat]?.name,
+          moleId: active.id,
+        }, now);
+        moleBonks.set(hole, { until: now + BONK_MS, local: true });
+        paintMoleHoles();
         send({ type: "hit", moleId: active.id });
       });
-      board.append(button);
+      board.append(pit);
     }
     wrap.replaceChildren(board);
   }
-  const holes = new Set((state.position.active || []).filter((mole) => mole.expiresAt > serverNow()).map((mole) => mole.hole));
-  const whack = state.position.lastWhack;
-  const fresh = whack && serverNow() - whack.at < 1500;
-  board.querySelectorAll(".hole").forEach((hole) => {
-    const index = Number(hole.dataset.hole);
-    hole.classList.toggle("up", holes.has(index));
-    let pop = hole.querySelector(".whack-pop");
-    if (fresh && whack.hole === index) {
-      if (!pop) {
-        pop = el("span", { className: "whack-pop" });
-        hole.append(pop);
-      }
-      pop.hidden = false;
-      pop.textContent = `+1 ${state.seats[whack.seat]?.name || "누군가"}`;
-    } else if (pop) pop.hidden = true;
-  });
+  const names = (seat) => state.seats[seat]?.name || "누군가";
+  molePops = noteLatest(molePops, state.position.lastWhack, names, Date.now(), serverNow());
+  const key = whackKey(state.position.lastWhack);
+  if (key && !seenWhacks.has(key)) {
+    seenWhacks.add(key);
+    const age = serverNow() - state.position.lastWhack.at;
+    const hole = state.position.lastWhack.hole;
+    if (age <= BONK_MS + 200 && (moleBonks.get(hole)?.until || 0) <= Date.now()) {
+      moleBonks.set(hole, { until: Date.now() + BONK_MS, local: false });
+    }
+  }
+  paintMoleHoles();
   let log = document.getElementById("whack-log");
   if (!log) {
     log = el("p", { className: "whack-log", id: "whack-log" });
     wrap.append(log);
   }
   log.textContent = (state.position.whacks || []).slice(-3).map((item) => `${state.seats[item.seat]?.name || "누군가"} +1`).join(" · ");
+}
+
+function paintMoleHoles() {
+  const state = latest;
+  const board = document.getElementById("board");
+  if (!state || state.game !== "mole" || !board?.classList.contains("moles")) return;
+  const now = Date.now();
+  const alive = new Set((state.position.active || []).filter((mole) => mole.expiresAt > serverNow()).map((mole) => mole.hole));
+  molePops = molePops.filter((pop) => pop.until > now);
+  board.querySelectorAll(".pit").forEach((pit) => {
+    const index = Number(pit.dataset.hole);
+    const bonk = moleBonks.get(index);
+    const bonking = Boolean(bonk && bonk.until > now);
+    if (bonk && !bonking) moleBonks.delete(index);
+    pit.classList.toggle("bonk", bonking);
+    pit.classList.toggle("up", alive.has(index) || bonking);
+    const pop = pit.querySelector(".whack-pop");
+    const name = labelForHole(molePops, index, now);
+    if (!pop) return;
+    pop.hidden = !name;
+    if (name) pop.textContent = `+1 ${name}`;
+  });
 }
 
 function renderScore(state) {
@@ -549,22 +595,11 @@ function tickClock() {
     const turn = document.getElementById("turn");
     if (turn && state.position.phase === "countdown") turn.textContent = `${Math.max(1, Math.ceil(left / 1000))}초 뒤 시작`;
     if (turn && state.position.phase === "playing") turn.textContent = `남은 시간 ${Math.max(0, Math.ceil(left / 1000))}초`;
-    if (state.position.phase === "playing") {
-      document.querySelectorAll(".hole").forEach((hole) => {
-        const active = state.position.active.some((mole) => mole.hole === Number(hole.dataset.hole) && mole.expiresAt > now);
-        hole.classList.toggle("up", active);
-      });
-    }
+    if (state.position.phase === "playing") paintMoleHoles();
     if (state.position.phase === "playing" && left < -200 && !syncedEnd) {
       syncedEnd = true;
       send({ type: "sync" });
     }
-    const whack = state.position.lastWhack;
-    const shown = whack && serverNow() - whack.at < 1500;
-    document.querySelectorAll(".whack-pop").forEach((pop) => {
-      const hole = Number(pop.closest(".hole")?.dataset.hole);
-      pop.hidden = !(shown && hole === whack.hole);
-    });
   }
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
     const left = state.position.endsAt - serverNow();

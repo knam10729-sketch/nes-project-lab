@@ -19,7 +19,7 @@ async function handleGames(request, env, url) {
   const path = url.pathname;
   if (path.startsWith("/play-api/")) return handleApi(request, env, url);
   if (path === "/games" || path === "/games/" || path === "/games/index.html") return serve(request, env, "/games/index.html");
-  if (["/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/vendor/qrcode.js", "/games/games.css"].includes(path)) return env.ASSETS.fetch(request);
+  if (["/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/mole-view.js", "/games/vendor/qrcode.js", "/games/games.css"].includes(path)) return env.ASSETS.fetch(request);
   const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);
