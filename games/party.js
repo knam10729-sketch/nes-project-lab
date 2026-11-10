@@ -237,7 +237,10 @@ function renderDraw(state, secret, mySeat, send) {
   const actions = document.getElementById("actions");
   const draft = document.getElementById("line")?.value || "";
   actions.replaceChildren();
-  if (state.status === "waiting" && mySeat === 0) actions.append(press("시작", "start", () => send({ type: "start" }), "primary"));
+  if (state.status === "waiting") {
+    actions.append(drawTimes(state, mySeat, send));
+    if (mySeat === 0) actions.append(press("시작", "start", () => send({ type: "start" }), "primary"));
+  }
   if (state.position.phase === "draw" && state.turnSeat === mySeat) {
     const colors = el("div", { className: "swatches" });
     for (const color of DRAW_COLORS) {
@@ -346,6 +349,20 @@ function paint(ctx, canvas, stroke) {
 
 function latestSafe() {
   return window.__latestGame || null;
+}
+
+function drawTimes(state, mySeat, send) {
+  const box = el("div", { className: "times" });
+  const current = state.time?.drawSeconds || 80;
+  box.append(el("p", { className: "muted", text: `그리는 시간 ${current}초` }));
+  if (mySeat === 0) {
+    for (const value of [40, 60, 80, 100, 120]) {
+      const button = el("button", { type: "button", className: value === current ? "primary" : "", text: `${value}초` });
+      button.addEventListener("click", () => send({ type: "settings", seconds: value }));
+      box.append(button);
+    }
+  }
+  return box;
 }
 
 function lineBox(label, id, onSend, draft = "") {

@@ -1,4 +1,5 @@
 export const MOLE_DURATION = 60_000;
+export const MOLE_TIMES = [30_000, 60_000, 90_000, 120_000];
 export const HOLES = 9;
 
 export function initialState(seed = 1) {
@@ -14,9 +15,10 @@ export function initialState(seed = 1) {
   };
 }
 
-export function startRound(state, now, players) {
+export function startRound(state, now, players, durationMs = MOLE_DURATION) {
   if (state.phase === "countdown" || state.phase === "playing") return { ok: false, error: "started" };
   const count = Math.max(1, Math.min(4, players));
+  const duration = MOLE_TIMES.includes(durationMs) ? durationMs : MOLE_DURATION;
   const startedAt = now + 2000;
   return {
     ok: true,
@@ -24,7 +26,8 @@ export function startRound(state, now, players) {
       ...initialState(state.rng || 1),
       phase: "countdown",
       startedAt,
-      endsAt: startedAt + MOLE_DURATION,
+      endsAt: startedAt + duration,
+      duration,
       scores: Array(count).fill(0),
       nextSpawnAt: startedAt,
     },

@@ -100,24 +100,44 @@ function mountSetup() {
       category.append(option);
     }
   }
+  const limits = game === "mole" ? [30, 60, 90, 120] : game === "draw" ? [40, 60, 80, 100, 120] : null;
+  const chosen = { seconds: game === "draw" ? 80 : 60 };
+  const times = el("div", { className: "times", id: "setup-times" });
+  if (limits) {
+    times.append(el("p", { className: "muted", text: game === "mole" ? "제한 시간" : "그리는 시간" }));
+    for (const value of limits) {
+      const choice = el("button", { type: "button", className: value === chosen.seconds ? "primary" : "", text: `${value}초` });
+      choice.addEventListener("click", () => {
+        chosen.seconds = value;
+        times.querySelectorAll("button").forEach((item) => item.classList.toggle("primary", item === choice));
+      });
+      times.append(choice);
+    }
+  }
   const solo = el("button", { type: "button", id: "solo", text: "혼자서 봇과 하기" });
+  const extra = () => ({
+    difficulty: difficulty.value,
+    category: category?.value || "food",
+    moleSeconds: game === "mole" ? chosen.seconds : undefined,
+    drawSeconds: game === "draw" ? chosen.seconds : undefined,
+  });
   solo.addEventListener("click", async () => {
     solo.disabled = true;
     note.textContent = "봇과 방을 만드는 중";
     try {
-      await createAndEnter(input.value, { solo: true, difficulty: difficulty.value, category: category?.value || "food" });
+      await createAndEnter(input.value, { solo: true, ...extra() });
     } catch (error) {
       note.textContent = error.message;
       solo.disabled = false;
     }
   });
-  form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(category ? [category] : []), solo, note);
+  form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     button.disabled = true;
     note.textContent = "방을 만드는 중";
     try {
-      await createAndEnter(input.value, {});
+      await createAndEnter(input.value, extra());
     } catch (error) {
       note.textContent = error.message;
       button.disabled = false;
@@ -449,7 +469,7 @@ function renderMole(state) {
       const button = el("button", { className: "hole", type: "button" });
       button.dataset.hole = String(hole);
       button.setAttribute("aria-label", `${hole + 1}번 구멍`);
-      button.append(el("span", { className: "mole", "aria-hidden": "true" }, [el("i"), el("i")]));
+      button.append(el("span", { className: "mole-clip" }, [el("span", { className: "mole", "aria-hidden": "true" }, [el("i"), el("i")])]));
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         const active = latest?.position.active?.find((mole) => mole.hole === hole && serverNow() <= mole.expiresAt);
@@ -462,7 +482,27 @@ function renderMole(state) {
     wrap.replaceChildren(board);
   }
   const holes = new Set((state.position.active || []).filter((mole) => mole.expiresAt > serverNow()).map((mole) => mole.hole));
-  board.querySelectorAll(".hole").forEach((hole) => hole.classList.toggle("up", holes.has(Number(hole.dataset.hole))));
+  const whack = state.position.lastWhack;
+  const fresh = whack && serverNow() - whack.at < 1500;
+  board.querySelectorAll(".hole").forEach((hole) => {
+    const index = Number(hole.dataset.hole);
+    hole.classList.toggle("up", holes.has(index));
+    let pop = hole.querySelector(".whack-pop");
+    if (fresh && whack.hole === index) {
+      if (!pop) {
+        pop = el("span", { className: "whack-pop" });
+        hole.append(pop);
+      }
+      pop.hidden = false;
+      pop.textContent = `+1 ${state.seats[whack.seat]?.name || "누군가"}`;
+    } else if (pop) pop.hidden = true;
+  });
+  let log = document.getElementById("whack-log");
+  if (!log) {
+    log = el("p", { className: "whack-log", id: "whack-log" });
+    wrap.append(log);
+  }
+  log.textContent = (state.position.whacks || []).slice(-3).map((item) => `${state.seats[item.seat]?.name || "누군가"} +1`).join(" · ");
 }
 
 function renderScore(state) {
@@ -486,8 +526,9 @@ function renderScore(state) {
 function renderActions(state) {
   const box = document.getElementById("actions");
   box.replaceChildren();
-  if (state.game === "mole" && state.position.phase === "waiting" && mySeat === 0) {
-    box.append(action("시작", "start", () => send({ type: "start" })));
+  if (state.game === "mole" && state.position.phase === "waiting") {
+    box.append(timeChoices(state, "mole"));
+    if (mySeat === 0) box.append(action("시작", "start", () => send({ type: "start" })));
   }
   if (state.canPass && state.turnSeat === mySeat) box.append(action("한수쉼", "pass", () => send({ type: "pass" })));
   if (state.canClaimDraw && state.turnSeat === mySeat) box.append(action("빅장 무승부", "claim", () => send({ type: "claimDraw" })));
@@ -518,6 +559,12 @@ function tickClock() {
       syncedEnd = true;
       send({ type: "sync" });
     }
+    const whack = state.position.lastWhack;
+    const shown = whack && serverNow() - whack.at < 1500;
+    document.querySelectorAll(".whack-pop").forEach((pop) => {
+      const hole = Number(pop.closest(".hole")?.dataset.hole);
+      pop.hidden = !(shown && hole === whack.hole);
+    });
   }
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
     const left = state.position.endsAt - serverNow();
@@ -603,6 +650,21 @@ function janggiLines() {
 
 function labelColor(color) {
   return /^\d+$/.test(color) ? `${color}번` : color;
+}
+
+function timeChoices(state, kind) {
+  const box = el("div", { className: "times", id: "times" });
+  const values = kind === "mole" ? [30, 60, 90, 120] : [40, 60, 80, 100, 120];
+  const current = kind === "mole" ? state.time?.moleSeconds : state.time?.drawSeconds;
+  box.append(el("p", { className: "muted", text: `${kind === "mole" ? "제한 시간" : "그리는 시간"} ${current}초` }));
+  if (mySeat === 0 && state.status === "waiting") {
+    for (const value of values) {
+      const button = el("button", { type: "button", className: value === current ? "primary" : "", text: `${value}초` });
+      button.addEventListener("click", () => send({ type: "settings", seconds: value }));
+      box.append(button);
+    }
+  }
+  return box;
 }
 
 function action(text, id, onClick, className = "") {

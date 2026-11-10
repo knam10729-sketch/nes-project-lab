@@ -73,6 +73,8 @@ export class GameRoom extends DurableObject {
       solo: body.solo === true,
       difficulty: body.difficulty,
       category: body.category,
+      moleSeconds: body.moleSeconds,
+      drawSeconds: body.drawSeconds,
     });
     if (!created.ok) return json({ error: created.error }, created.status || 400);
     const now = Date.now();

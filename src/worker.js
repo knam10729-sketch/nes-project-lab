@@ -55,6 +55,8 @@ async function createApi(request, env, url) {
       solo: body.solo === true,
       difficulty: body.difficulty === "normal" ? "normal" : "easy",
       category: typeof body.category === "string" ? body.category : "food",
+      moleSeconds: body.moleSeconds,
+      drawSeconds: body.drawSeconds,
     });
     if (response.status !== 409) return response;
   }

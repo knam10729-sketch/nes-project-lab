@@ -36,7 +36,10 @@ export function cleanName(name) {
   return text || "손님";
 }
 
-export function createRoom({ game, roomId, name, token, now = Date.now(), solo = false, difficulty = "easy", category = "food" }) {
+export const MOLE_SECONDS = [30, 60, 90, 120];
+export const DRAW_SECONDS = [40, 60, 80, 100, 120];
+
+export function createRoom({ game, roomId, name, token, now = Date.now(), solo = false, difficulty = "easy", category = "food", moleSeconds, drawSeconds }) {
   if (!GAMES[game]) return fail("알 수 없는 게임입니다.", 400);
   if (!/^[a-z2-9]{8}$/.test(String(roomId)) || !validToken(token)) return fail("방 정보가 올바르지 않습니다.", 400);
   const room = {
@@ -55,7 +58,10 @@ export function createRoom({ game, roomId, name, token, now = Date.now(), solo =
     solo: false,
     difficulty: "easy",
     botAt: null,
+    settings: { moleMs: 60_000, drawMs: 80_000 },
   };
+  if (MOLE_SECONDS.includes(Number(moleSeconds))) room.settings.moleMs = Number(moleSeconds) * 1000;
+  if (DRAW_SECONDS.includes(Number(drawSeconds))) room.settings.drawMs = Number(drawSeconds) * 1000;
   if (solo) startSolo(room, now, difficulty, category);
   return { ok: true, room };
 }
@@ -108,6 +114,7 @@ export function applyAction(room, seat, action, now = Date.now()) {
     next.seats[seat].name = cleanName(action.name);
     return { ok: true, room: next, changed: true };
   }
+  if (action.type === "settings") return applySettings(next, seat, action);
   if (action.type === "rematch") {
     if (next.status !== "over") return stopped("게임이 끝난 뒤에 다시 할 수 있습니다.", next, changed);
     const restarted = rematch(next, now);
@@ -134,6 +141,10 @@ export function present(room, now = Date.now(), connected = []) {
     })),
     solo: Boolean(room.solo),
     difficulty: room.difficulty || null,
+    time: {
+      moleSeconds: (room.settings?.moleMs || 60_000) / 1000,
+      drawSeconds: (room.settings?.drawMs || 80_000) / 1000,
+    },
     turnSeat: turnSeat(room),
     winnerSeat: room.winnerSeat,
     draw: room.draw,
@@ -179,7 +190,7 @@ export function forceBot(room, now = Date.now()) {
 function moleAction(room, seat, action, now, changed) {
   if (action.type === "start") {
     if (seat !== 0) return stopped("방장만 시작할 수 있습니다.", room, changed);
-    const started = startRound(room.data, now, room.seats.length);
+    const started = startRound(room.data, now, room.seats.length, room.settings?.moleMs);
     if (!started.ok) return stopped("이미 진행 중입니다.", room, changed);
     room.data = started.state;
     room.status = "playing";
@@ -189,9 +200,10 @@ function moleAction(room, seat, action, now, changed) {
     return { ok: true, room, changed: true };
   }
   if (action.type === "hit") {
+    const mole = room.data.active.find((item) => item.id === Number(action.moleId));
     const result = hit(room.data, seat, Number(action.moleId), now);
     if (!result.ok) return stopped("이미 사라졌거나 다른 사람이 잡았습니다.", room, changed);
-    room.data = result.state;
+    room.data = rememberWhack(result.state, mole, seat, now);
     return { ok: true, room, changed: true };
   }
   return stopped("알 수 없는 요청입니다.", room, changed);
@@ -285,7 +297,9 @@ function publicPosition(room) {
     endsAt: room.data.endsAt,
     active: room.data.active,
     scores: room.data.scores,
-    duration: MOLE_DURATION,
+    duration: room.data.duration || room.settings?.moleMs || MOLE_DURATION,
+    lastWhack: room.data.lastWhack || null,
+    whacks: room.data.whacks || [],
   };
 }
 
@@ -322,7 +336,7 @@ function startParty(room, seat, action, now) {
     ? beginYut(room.data, count, Boolean(action.teams))
     : room.game === "liar"
       ? beginLiar(room.data, count, action.category, randomInt(count), randomInt(30))
-      : beginDraw(room.data, count, randomInt(1000), now);
+      : beginDraw(room.data, count, randomInt(1000), now, { durationMs: room.settings?.drawMs });
   if (!started.ok) return stopped("시작할 수 없습니다. 인원과 설정을 확인해 주세요.", room, false);
   room.data = started.state;
   room.status = "playing";
@@ -475,7 +489,7 @@ function startSolo(room, now, difficulty, category, addPlayers = true) {
     return;
   }
   if (room.game === "mole") {
-    const started = startRound(room.data, now, players);
+    const started = startRound(room.data, now, players, room.settings?.moleMs);
     if (started.ok) room.data = started.state;
   } else if (room.game === "yut") {
     const started = beginYut(room.data, players, false);
@@ -490,6 +504,7 @@ function startSolo(room, now, difficulty, category, addPlayers = true) {
       soloGuess: true,
       botDrawer: 1,
       pack: DRAWINGS,
+      durationMs: room.settings?.drawMs,
     });
     if (started.ok) room.data = started.state;
   }
@@ -664,12 +679,34 @@ function actMole(room, now) {
     if (!choice || at < choice.at) choice = { key, id, seat, at };
   }
   if (!choice) return false;
+  const mole = room.data.active.find((item) => item.id === choice.id);
   delete room.data.botPlans[choice.key];
+  const plans = room.data.botPlans;
   const result = hit(room.data, choice.seat, choice.id, now);
-  if (result.ok) {
-    room.data = { ...result.state, botPlans: room.data.botPlans };
-  }
+  if (result.ok) room.data = rememberWhack({ ...result.state, botPlans: plans }, mole, choice.seat, now);
   return true;
+}
+
+function rememberWhack(state, mole, seat, now) {
+  const whack = { hole: mole?.hole ?? null, seat, at: now };
+  return { ...state, lastWhack: whack, whacks: [...(state.whacks || []), whack].slice(-8) };
+}
+
+function applySettings(room, seat, action) {
+  if (seat !== 0) return stopped("방장만 시간을 바꿀 수 있습니다.", room, false);
+  if (room.status !== "waiting") return stopped("시작 전에만 바꿀 수 있습니다.", room, false);
+  const seconds = Number(action.seconds);
+  if (room.game === "mole") {
+    if (!MOLE_SECONDS.includes(seconds)) return stopped("선택할 수 없는 시간입니다.", room, false);
+    room.settings = { ...room.settings, moleMs: seconds * 1000 };
+    return { ok: true, room, changed: true };
+  }
+  if (room.game === "draw") {
+    if (!DRAW_SECONDS.includes(seconds)) return stopped("선택할 수 없는 시간입니다.", room, false);
+    room.settings = { ...room.settings, drawMs: seconds * 1000 };
+    return { ok: true, room, changed: true };
+  }
+  return stopped("이 게임은 시간을 바꾸지 않습니다.", room, false);
 }
 
 function ensureMolePlans(room) {
