@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080808">
+<title>게임 | 정한.kr</title>
+<meta name="description" content="링크로 방을 만들어 오목, 체스, 장기, 두더지 잡기를 같이 합니다.">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/games/games.css">
+<script src="/theme.js" defer></script>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/#calendar">공유 캘린더</a><a href="/games" aria-current="page">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="화이트 테마로 전환" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">화이트</span></button></nav></div></header>
+<main class="wrap">
+<p class="eyebrow">PLAY TOGETHER</p>
+<h1>같이 두는 게임.</h1>
+<p class="lead">방을 만들고 링크를 보내면, 같은 판에서 바로 둡니다. 자리를 기억해 두어서 브라우저를 닫았다가 같은 링크로 돌아와도 이어서 둘 수 있습니다.</p>
+<div class="steps">
+<article class="step"><b>01</b>게임을 고르고 방을 만듭니다.</article>
+<article class="step"><b>02</b>링크를 친구에게 보냅니다.</article>
+<article class="step"><b>03</b>들어온 사람과 바로 둡니다.</article>
+</div>
+<div class="cards">
+<a class="card" href="/games/gomoku"><p class="eyebrow">2명</p><h3>오목</h3><p>15줄 판. 흑과 백이 번갈아 두고, 다섯 칸 이상 이어지면 이깁니다.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/chess"><p class="eyebrow">2명</p><h3>체스</h3><p>캐슬링, 앙파상, 프로모션과 체크메이트까지 정식 규칙으로 둡니다.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/janggi"><p class="eyebrow">2명</p><h3>장기</h3><p>궁성, 마와 상의 막힘, 포의 뜀을 지킨 한국 장기. 장군과 외통을 판단합니다.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/mole"><p class="eyebrow">1–4명</p><h3>두더지 잡기 대결</h3><p>60초 동안 같은 두더지가 모두에게 나옵니다. 먼저 누른 사람이 점수를 가져갑니다.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/yut"><p class="eyebrow">2–4명</p><h3>윷놀이</h3><p>윷을 던져 말을 옮깁니다. 지름길, 업기, 잡기, 빽도까지 같은 판에서 진행합니다.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/liar"><p class="eyebrow">3–5명</p><h3>라이어 게임</h3><p>한 사람만 단어를 모릅니다. 힌트를 주고받은 뒤 라이어를 찾아보세요.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/draw"><p class="eyebrow">2–5명</p><h3>그림 맞히기</h3><p>번갈아 그림을 그리고, 채팅으로 맞힙니다. 빠를수록 점수가 높습니다.</p><span class="go">방 만들기 →</span></a>
+</div>
+</main>
+<footer class="wrap">© <span id="year"></span> 정한.kr</footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>

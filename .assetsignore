@@ -1,0 +1,13 @@
+.git
+.wrangler
+node_modules
+src
+test
+dist
+_worker.js
+package.json
+package-lock.json
+wrangler.games.jsonc
+README.md
+.gitignore
+.assetsignore
