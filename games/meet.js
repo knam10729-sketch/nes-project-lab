@@ -1,4 +1,6 @@
-import { distanceMeters, formatMeters, placeLinks, sphericalMidpoint } from "./geo.js";
+import { distanceMeters, formatMeters, nearestPlace, placeLabel, placeLinks, sphericalMidpoint } from "./geo.js";
+import { locate } from "./locate.js";
+import { drawMarkers, ensureMap, onMapPick } from "./map-view.js";
 import { drawQr } from "./qr.js";
 
 const COLORS = ["#e11d48", "#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f", "#c2410c", "#0f766e"];
@@ -14,6 +16,8 @@ let layer = null;
 let picking = false;
 let soloPoints = [];
 let stopped = false;
+let pendingPin = null;
+let roomToken = "";
 
 const savedName = localStorage.getItem("nes-play-name") || "";
 const savedSeat = readSeat();
@@ -95,6 +99,7 @@ async function enterRoom(name, token) {
   localStorage.setItem("nes-play-name", name.trim() || "손님");
   localStorage.setItem(`nes-play:${roomId}`, JSON.stringify({ token: data.token, name, game: "meet" }));
   mySeat = data.seat;
+  roomToken = data.token;
   mountRoom(data.token);
 }
 
@@ -107,22 +112,22 @@ function mountRoom(token) {
       Object.assign(el("input", { id: "room-link" }), { readOnly: true, value: location.href }),
       el("button", { type: "button", id: "copy-link", text: "링크 복사" }),
     ]),
-    qrCard(),
     el("div", { className: "actions", id: "pin-actions" }),
     el("div", { id: "map", className: "map-frame" }),
-    el("p", { className: "muted map-credit", text: "지도 © OpenStreetMap 기여자" }),
+    el("p", { className: "muted map-credit", text: "지도를 누르면 그 자리가 선택됩니다. 지도 © OpenStreetMap 기여자" }),
     el("div", { id: "people" }),
     el("div", { className: "actions", id: "place-links" }),
+    qrCard(),
     el("p", { className: "note", id: "note" }),
   );
   document.getElementById("copy-link").addEventListener("click", copyLink);
   const actions = document.getElementById("pin-actions");
   actions.append(
-    button("내 위치 공유", "primary", () => askGps((lat, lng) => sendPin(lat, lng, "gps"))),
-    button("지도에서 고르기", "", () => { picking = true; setNote("지도를 한 번 눌러 장소를 고르세요."); }),
-    button("내 위치 지우기", "", () => send({ type: "clearPin" })),
+    button("내 위치 공유", "primary", () => shareGps()),
+    button("지도에서 고르기", "", () => beginPick()),
+    button("내 위치 지우기", "", () => { pendingPin = null; send({ type: "clearPin" }); }),
   );
-  openMap((lat, lng) => {
+  const opened = openMap((lat, lng) => {
     if (!picking) {
       setNote("지도에서 고르기를 누른 뒤 장소를 찍으세요.");
       return;
@@ -130,6 +135,7 @@ function mountRoom(token) {
     picking = false;
     sendPin(lat, lng, "map");
   });
+  if (!opened.ok) setNote(opened.error);
   connect(token);
 }
 
@@ -141,17 +147,18 @@ function mountSolo() {
     privacy(),
     el("p", { className: "copy", text: "방은 만들지 않습니다. 새로고침하면 찍어 둔 장소는 사라집니다." }),
     el("div", { className: "actions" }, [
-      button("내 위치 하나 넣기", "primary", () => askGps((lat, lng) => addSolo(lat, lng))),
+      button("내 위치 하나 넣기", "primary", () => shareGps(addSolo)),
       button("마지막 장소 빼기", "", () => { soloPoints.pop(); drawSolo(); }),
       button("방 만들기로", "", () => { destroyMap(); mountLobby(); }),
     ]),
     el("div", { id: "map", className: "map-frame" }),
-    el("p", { className: "muted map-credit", text: "지도 © OpenStreetMap 기여자. 지도를 누르면 장소가 추가됩니다." }),
+    el("p", { className: "muted map-credit", text: "지도를 누르면 장소가 추가됩니다. 지도 © OpenStreetMap 기여자" }),
     el("div", { id: "people" }),
     el("div", { className: "actions", id: "place-links" }),
     el("p", { className: "note", id: "note" }),
   );
-  openMap((lat, lng) => addSolo(lat, lng));
+  const opened = openMap((lat, lng) => addSolo(lat, lng));
+  if (!opened.ok) setNote(opened.error);
   drawSolo();
 }
 
@@ -184,7 +191,10 @@ function connect(token) {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${proto}://${location.host}/play-api/rooms/${roomId}/ws?token=${encodeURIComponent(token)}`);
   socket = ws;
-  ws.addEventListener("open", () => send({ type: "hello" }));
+  ws.addEventListener("open", () => {
+    send({ type: "hello" });
+    flushPin();
+  });
   ws.addEventListener("message", (event) => {
     let message;
     try { message = JSON.parse(event.data); } catch { return; }
@@ -201,57 +211,49 @@ function connect(token) {
 
 function renderRoom(state) {
   latest = state;
-  const meet = state.meet || { people: [], midpoint: null };
-  paintMap(meet.people.filter((person) => person.lat != null), meet.midpoint);
+  const meet = overlayPending(state.meet || { people: [], midpoint: null });
+  paintMap(meet.people, meet.midpoint);
   paintPeople(meet.people, meet.midpoint, false);
   paintLinks(meet.midpoint);
   const mine = meet.people.find((person) => person.seat === mySeat);
+  if (pendingPin && mine?.lat != null) return;
   if (!mine?.lat) setNote("내 위치 공유를 누르거나, 지도에서 장소를 고르세요.");
-  else if (!meet.midpoint) setNote("한 명 더 위치를 공유하면 중간지점이 나옵니다.");
+  else if (!meet.midpoint) setNote(`${whereName(mine)} 위치로 공유했습니다. 한 명 더 오면 중간이 나옵니다.`);
   else setNote("");
 }
 
-function openMap(onPick) {
-  if (!window.L) {
-    setNote("지도를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.");
-    return;
+function overlayPending(meet) {
+  if (!pendingPin || mySeat == null) return meet;
+  const serverMine = (meet.people || []).find((person) => person.seat === mySeat);
+  if (serverMine?.lat != null && distanceMeters(serverMine, pendingPin) < 40) {
+    pendingPin = null;
+    return meet;
   }
-  map = L.map(document.getElementById("map"), { zoomControl: true }).setView([36.4, 127.8], 7);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    detectRetina: false,
-  }).addTo(map);
-  layer = L.layerGroup().addTo(map);
-  map.on("click", (event) => onPick(event.latlng.lat, event.latlng.lng));
-  requestAnimationFrame(() => map.invalidateSize());
+  const people = (meet.people || []).map((person) => person.seat === mySeat
+    ? { ...person, lat: pendingPin.lat, lng: pendingPin.lng, source: pendingPin.source }
+    : person);
+  const placed = people.filter((person) => person.lat != null);
+  const midpoint = placed.length >= 2 ? sphericalMidpoint(placed) : null;
+  return {
+    people: people.map((person) => ({
+      ...person,
+      meters: midpoint && person.lat != null ? Math.round(distanceMeters(person, midpoint)) : null,
+    })),
+    midpoint,
+  };
+}
+
+function openMap(onPick) {
+  const element = document.getElementById("map");
+  const opened = ensureMap(element);
+  if (!opened.ok) return opened;
+  onMapPick(element, onPick);
+  map = opened.map;
+  return opened;
 }
 
 function paintMap(people, midpoint) {
-  if (!layer) return;
-  layer.clearLayers();
-  const bounds = [];
-  for (const person of people) {
-    bounds.push([person.lat, person.lng]);
-    L.circleMarker([person.lat, person.lng], {
-      radius: 9,
-      color: "#111",
-      weight: 2,
-      fillColor: COLORS[person.seat % COLORS.length],
-      fillOpacity: 0.95,
-    }).bindTooltip(person.name, { permanent: true, direction: "top", className: "pin-tip" }).addTo(layer);
-  }
-  if (midpoint) {
-    bounds.push([midpoint.lat, midpoint.lng]);
-    L.circleMarker([midpoint.lat, midpoint.lng], {
-      radius: 13,
-      color: "#111",
-      weight: 3,
-      fillColor: "#fff",
-      fillOpacity: 1,
-    }).bindTooltip("중간지점", { permanent: true, direction: "bottom", className: "pin-tip" }).addTo(layer);
-  }
-  if (bounds.length) map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15 });
+  drawMarkers(document.getElementById("map"), people, midpoint);
 }
 
 function paintPeople(people, midpoint, solo) {
@@ -266,7 +268,7 @@ function paintPeople(people, midpoint, solo) {
   for (const person of people) {
     const where = person.lat == null
       ? "위치 기다리는 중"
-      : `${person.source === "gps" ? "현재 위치" : "직접 고른 곳"}${person.meters == null ? "" : ` · 중간까지 ${formatMeters(person.meters)}`}`;
+      : `${whereName(person)}${person.meters == null ? "" : ` · 중간까지 ${formatMeters(person.meters)}`}`;
     const item = el("li", {});
     item.append(el("i", { className: "dot" }));
     item.style.setProperty("--dot", COLORS[person.seat % COLORS.length]);
@@ -291,30 +293,71 @@ function paintLinks(midpoint) {
   );
 }
 
-function askGps(onPoint) {
+function whereName(person) {
+  if (person.lat == null) return "위치 기다리는 중";
+  const place = nearestPlace(person.lat, person.lng);
+  const how = person.source === "gps" ? "현재 위치" : "직접 고른 곳";
+  return `${placeLabel(place)} 근처 · ${how}`;
+}
+
+async function shareGps(onPoint) {
   if (!window.isSecureContext || !navigator.geolocation) {
-    setNote("이 브라우저에서는 위치를 받을 수 없습니다. 지도를 눌러 주세요.");
-    picking = true;
+    beginPick();
+    setNote("이 브라우저에서는 위치를 받을 수 없습니다. 지도를 눌러 장소를 고르세요.");
     return;
   }
   setNote("위치를 확인하는 중");
-  navigator.geolocation.getCurrentPosition(
-    (position) => onPoint(position.coords.latitude, position.coords.longitude),
-    () => {
-      picking = true;
-      setNote("위치를 허용하지 않았습니다. 지도를 한 번 눌러 장소를 고르세요.");
-    },
-    { enableHighAccuracy: false, timeout: 12000, maximumAge: 0 },
-  );
+  try {
+    const position = await locate(navigator.geolocation);
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    if (onPoint) onPoint(lat, lng);
+    else sendPin(lat, lng, "gps");
+  } catch (error) {
+    beginPick();
+    setNote(error.message || "위치를 받지 못했습니다. 지도에서 장소를 고르세요.");
+  }
+}
+
+function beginPick() {
+  picking = true;
+  const opened = openMap((lat, lng) => {
+    if (!picking && roomId) {
+      setNote("지도에서 고르기를 누른 뒤 장소를 찍으세요.");
+      return;
+    }
+    picking = false;
+    if (roomId) sendPin(lat, lng, "map");
+    else addSolo(lat, lng);
+  });
+  document.getElementById("map")?.scrollIntoView({ block: "center" });
+  if (!opened.ok) setNote(opened.error);
+  else setNote("지도의 원하는 곳을 한 번 눌러 주세요.");
 }
 
 function sendPin(lat, lng, source) {
-  send({ type: "pin", lat, lng, source });
-  setNote("위치를 방에 보여 주는 중");
+  pendingPin = { lat, lng, source };
+  if (latest) renderRoom(latest);
+  else {
+    const place = nearestPlace(lat, lng);
+    setNote(`${placeLabel(place)} 근처로 공유하는 중`);
+  }
+  flushPin();
+}
+
+function flushPin() {
+  if (!pendingPin) return;
+  const sent = send({ type: "pin", lat: pendingPin.lat, lng: pendingPin.lng, source: pendingPin.source });
+  if (sent) {
+    const place = nearestPlace(pendingPin.lat, pendingPin.lng);
+    setNote(`${placeLabel(place)} 근처로 공유했습니다.`);
+  }
 }
 
 function send(message) {
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+  if (socket?.readyState !== WebSocket.OPEN) return false;
+  socket.send(JSON.stringify(message));
+  return true;
 }
 
 function copyLink() {

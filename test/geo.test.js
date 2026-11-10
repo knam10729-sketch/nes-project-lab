@@ -8,6 +8,8 @@ import {
   distanceMeters,
   fortuneFor,
   gridCell,
+  NEIGHBORHOODS,
+  nearestPlace,
   placeLinks,
   POOLS,
   sanitizePin,
@@ -50,6 +52,9 @@ test("the same neighborhood and Seoul date always give the same fortune", () => 
   assert.deepEqual(here, nearby);
   assert.equal(here.date, day);
   assert.ok(here.score >= 58 && here.score <= 99);
+  assert.ok(here.overall.length >= 3 && here.overall.length <= 5);
+  assert.ok(here.money.length >= 2 && here.money.length <= 3);
+  assert.ok(here.placeLabel.includes(here.place.name));
   assert.notDeepEqual(here, fortuneFor(centerLat, 127.02, "2026-11-11"));
   assert.notEqual(gridCell(37.5, 127).latCell, gridCell(37.503, 127).latCell);
   assert.equal(seoulDate(new Date("2026-11-10T02:00:00Z")), "2026-11-10");
@@ -59,6 +64,20 @@ test("the same neighborhood and Seoul date always give the same fortune", () => 
   assert.equal(shared.includes("37.51"), false);
   assert.equal(shared.includes("lat="), false);
   assert.match(shared, /https:\/\/jeonghan\.kr\/games\/fortune$/);
+  assert.match(shared, new RegExp(here.placeLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(NEIGHBORHOODS.length >= 100);
+  const yeonnam = nearestPlace(37.5624, 126.9253);
+  assert.equal(yeonnam.name, "연남동");
+  assert.equal(yeonnam.city, "서울");
+  const haeundae = nearestPlace(35.1632, 129.1634);
+  assert.equal(haeundae.city, "부산");
+  assert.equal(haeundae.name, "우동");
+  const cities = new Set(NEIGHBORHOODS.map((place) => place.city));
+  for (const city of ["서울", "경기", "부산", "대구", "인천", "광주", "대전", "제주"]) assert.ok(cities.has(city));
+  const chosen = NEIGHBORHOODS.find((place) => place.name === "연남동");
+  const fixed = fortuneFor(chosen.lat, chosen.lng, day, chosen);
+  assert.equal(fixed.place.name, "연남동");
+  assert.match(fixed.placeLabel, /서울 마포구 연남동/);
 });
 
 test("meeting pins stay out of the saved room and links use public map urls", () => {

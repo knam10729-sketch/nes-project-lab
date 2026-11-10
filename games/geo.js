@@ -1,5 +1,25 @@
+import { NEIGHBORHOODS, placeLabel } from "./neighborhoods.js";
+import {
+  ADVICES,
+  AFTERNOONS,
+  CAUTIONS,
+  EVENINGS,
+  HEALTH,
+  LOVE,
+  MISSIONS,
+  MONEY,
+  MORNINGS,
+  OPENINGS,
+  PEOPLE,
+  SUMMARIES,
+  TEXT_POOLS,
+  WORDS,
+  WORK,
+} from "./fortune-text.js";
+
 const EARTH_M = 6_371_000;
 const LAT_M = 111_320;
+const DISTANCES = [120, 180, 240, 300, 360, 420];
 
 export const DIRECTIONS = [
   { id: "n", label: "북", bearing: 0 },
@@ -12,147 +32,7 @@ export const DIRECTIONS = [
   { id: "nw", label: "북서", bearing: 315 },
 ];
 
-const SUMMARIES = [
-  "오늘은 발걸음이 가볍습니다.",
-  "가까운 곳이 의외로 반갑습니다.",
-  "서두르지 않으면 더 잘 풀립니다.",
-  "작은 선택이 기분을 바꿉니다.",
-  "익숙한 길이 오늘은 새롭습니다.",
-  "잠깐 멈춰 서면 답이 보입니다.",
-  "사람 목소리가 힘이 됩니다.",
-  "혼자만의 시간이 충전입니다.",
-  "계획보다 여유가 이깁니다.",
-  "밝은 쪽이 오늘의 힌트입니다.",
-  "작은 친절이 크게 돌아옵니다.",
-  "지금 있는 자리가 나쁘지 않습니다.",
-  "호기심을 따라가도 좋습니다.",
-  "정리 한 번이 운을 닦습니다.",
-  "물 한 잔이 집중을 돌려줍니다.",
-  "오늘은 약속을 가볍게 지키면 됩니다.",
-  "처음 보는 간판이 힌트입니다.",
-  "느린 걸음이 더 멀리 갑니다.",
-  "웃으면 숫자가 따라옵니다.",
-  "미뤄 둔 연락이 따뜻합니다.",
-  "창밖을 보면 다음이 보입니다.",
-  "주머니를 가볍게 하면 마음이 가볍습니다.",
-  "오늘은 새 메뉴보다 단골이 좋습니다.",
-  "질문을 하나 더 하면 이깁니다.",
-  "그늘보다 그늘 끝이 좋습니다.",
-  "같은 장소도 시간이 다르면 다릅니다.",
-  "발밑을 보면 행운이 붙어 있습니다.",
-  "오늘은 크게 벌리기보다 맞추기입니다.",
-  "짧은 산책이 긴 고민을 이깁니다.",
-  "반가운 이름이 떠오르면 그 사람입니다.",
-  "오늘은 왼쪽보다 밝은 쪽이 맞습니다.",
-  "작은 성취를 꼭 세어 보세요.",
-];
-
-const MONEY = [
-  "지갑을 열기 전에 한 번만 더 생각해 보세요.",
-  "작은 거스름돈이 기분을 살립니다.",
-  "오늘은 충동구매보다 목록이 이깁니다.",
-  "공짜처럼 보여도 시간을 씁니다.",
-  "아끼지 말고, 아낄 곳만 아끼세요.",
-  "잔액보다 오늘 쓴 이유를 적어 보세요.",
-  "점심값을 아껴 커피를 사지 않아도 됩니다.",
-  "중고나 나눔이 새 결정보다 낫습니다.",
-  "자동이체 하나를 확인해 보세요.",
-  "오늘은 현금이 마음을 차분하게 합니다.",
-  "할인은 필요했던 물건에만 해당됩니다.",
-  "친구와 더치페이하면 관계가 편합니다.",
-  "통장 이름을 보면 목표가 떠오릅니다.",
-  "오늘 산 것은 내일도 좋을지 물어보세요.",
-  "포인트는 쓰려고 만든 날입니다.",
-  "큰돈은 내일, 작은 정리는 오늘.",
-  "영수증을 한 장만 버려도 정리가 됩니다.",
-  "공과금 날짜를 달력에 적으면 마음이 놓입니다.",
-  "오늘은 비교 한 번이 천 원을 지킵니다.",
-  "지갑 사진을 정리하면 자리가 납니다.",
-  "나눔 한 번이 의외의 여유를 줍니다.",
-  "오늘은 새로 사기보다 고치는 날입니다.",
-  "커피 한 잔 값을 내일의 나에게 남겨 두세요.",
-  "세일 알림은 오늘만 꺼도 좋습니다.",
-  "잔돈을 저금통에 넣으면 운이 쌓입니다.",
-  "필요한 것과 갖고 싶은 것을 나눠 적으세요.",
-  "오늘은 비싼 메뉴보다 나눠 먹는 메뉴입니다.",
-  "구독 하나를 훑어보면 새는 곳이 보입니다.",
-  "가격표 아래 글씨를 끝까지 읽으세요.",
-  "오늘은 숫자보다 만족이 기준입니다.",
-  "거스름돈을 바로 넣으면 잃지 않습니다.",
-  "작은 이체가 큰 마음보다 정확합니다.",
-];
-
-const LOVE = [
-  "먼저 안부를 묻는 쪽이 이깁니다.",
-  "답장을 짧게라도 오늘 보내세요.",
-  "같이 걸을 사람이 떠오르면 그 사람입니다.",
-  "칭찬 한 마디가 긴 설명보다 낫습니다.",
-  "오늘은 조언보다 듣기가 맞습니다.",
-  "사진 한 장이 마음을 전합니다.",
-  "약속 시간을 지키면 호감이 오릅니다.",
-  "다툰 일은 오늘은 덮어 두세요.",
-  "이름 뒤에 쉼표를 넣고 생각해 보세요.",
-  "같이 먹을 메뉴를 물어보는 것만으로 충분합니다.",
-  "오늘은 새로운 사람보다 오래된 사람이 따뜻합니다.",
-  "웃는 얼굴이 가장 짧은 편지입니다.",
-  "늦게 보낸 안부도 안 보낸 것보다 낫습니다.",
-  "손편지 대신 음성 메시지 하나가 좋습니다.",
-  "취향을 기억해 주면 점수가 오릅니다.",
-  "오늘은 질투보다 궁금함이 이깁니다.",
-  "같이 있는 침묵도 대화입니다.",
-  "상대의 하루를 한 문장만 물어보세요.",
-  "장소보다 같이 있는 시간이 중요합니다.",
-  "오늘은 고백보다 감사가 맞습니다.",
-  "읽씹은 내일로 미루지 마세요.",
-  "작은 기념일을 먼저 기억하면 빛납니다.",
-  "연락처 별명을 다정하게 바꿔 보세요.",
-  "오늘은 내가 맞다는 말보다 그랬구나가 좋습니다.",
-  "같이 들을 노래를 하나 고르세요.",
-  "스킨십보다 눈맞춤이 먼저입니다.",
-  "오래된 농담이 오늘 다시 통합니다.",
-  "만나기 어렵다면 사진으로 자리를 나누세요.",
-  "오늘은 기대보다 있는 그대로가 좋습니다.",
-  "헤어질 때 다음을 정하면 마음이 남습니다.",
-  "친구의 연애 이야기도 내 마음을 보여 줍니다.",
-  "좋은 말은 오늘 안에 도착해야 합니다.",
-];
-
-const HEALTH = [
-  "물을 평소보다 한 컵 더 마시세요.",
-  "어깨를 한 번 내리면 숨이 깊어집니다.",
-  "오늘은 엘리베이터 대신 한 층만 걸어 보세요.",
-  "화면을 20분마다 멀리 보세요.",
-  "식사 속도만 늦춰도 속이 편합니다.",
-  "햇빛을 5분 쬐면 눈이 깨어납니다.",
-  "자기 전 휴대폰을 팔 길이 밖에 두세요.",
-  "목 뒤를 따뜻하게 하면 긴장이 풀립니다.",
-  "오늘은 매운 것보다 따뜻한 국물이 맞습니다.",
-  "스트레칭은 아프기 전에 멈추세요.",
-  "카페인을 오후에 한 잔만 줄여 보세요.",
-  "발바닥을 바닥에 붙이고 앉아 보세요.",
-  "오늘은 늦게 자기보다 10분이 이득입니다.",
-  "간식은 단것보다 견과 한 줌이 좋습니다.",
-  "창문을 열면 머리가 정리됩니다.",
-  "양치 후에 물만 마셔도 입이 개운합니다.",
-  "가방을 양쪽으로 번갈아 메 보세요.",
-  "오늘은 무리한 운동보다 산책이 약입니다.",
-  "눈을 감고 열까지 세면 맥박이 느려집니다.",
-  "점심 후 5분 걷기가 졸음을 이깁니다.",
-  "자세를 펴면 목소리도 밝아집니다.",
-  "오늘은 찬물보다 미지근한 물이 맞습니다.",
-  "손목을 둥글게 돌려 주세요.",
-  "배고프기 전에 가볍게 먹는 날이 좋습니다.",
-  "신발을 고쳐 신으면 걸음이 달라집니다.",
-  "오늘은 소식보다 꼭꼭 씹기가 중요합니다.",
-  "허리를 등받이에 붙여 보세요.",
-  "밤공기 대신 아침 공기가 이깁니다.",
-  "알림을 잠시 끄면 숨이 돌아옵니다.",
-  "오늘은 약속도 쉬는 시간에 넣으세요.",
-  "손을 따뜻하게 씻으면 기분이 정리됩니다.",
-  "작은 통증이 있으면 오늘 메모해 두세요.",
-];
-
-const COLORS = [
+export const COLORS = [
   ["빨강", "#e23b3b"], ["주황", "#f08a24"], ["노랑", "#f2c14e"], ["연두", "#8fce4a"],
   ["초록", "#2f9e44"], ["청록", "#1aa6a6"], ["하늘", "#4dabf7"], ["파랑", "#3b6fe0"],
   ["남색", "#364fc7"], ["보라", "#7950f2"], ["자주", "#c2255c"], ["분홍", "#f783ac"],
@@ -163,44 +43,19 @@ const COLORS = [
   ["자두", "#ae3ec9"], ["모래", "#d8c3a5"], ["밤색", "#6f4e37"], ["산호", "#ff6b6b"],
 ];
 
-const MISSIONS = [
-  "{dir}쪽으로 {m}m만 천천히 걸어 보기",
-  "{dir}쪽 골목의 끝까지 가 보고 돌아오기",
-  "{dir}쪽 창가에서 하늘을 1분 바라보기",
-  "{dir}쪽으로 걸으며 간판 세 개 읽어 보기",
-  "{dir}쪽에서 물 한 컵을 다 마시기",
-  "{dir}쪽 벤치나 난간에 잠시 앉아 보기",
-  "{dir}쪽으로 {m}m 갔다가 다른 길로 돌아오기",
-  "{dir}쪽 그늘과 볕의 경계를 찾아보기",
-  "{dir}쪽에서 사진 한 장만 찍고 걷기",
-  "{dir}쪽 횡단보도까지 여유 있게 걸어가기",
-  "{dir}쪽으로 가며 발걸음 수를 백까지 세기",
-  "{dir}쪽 나무나 화분 앞에서 잠깐 멈추기",
-  "{dir}쪽으로 {m}m 걷고 어깨의 힘을 빼기",
-  "{dir}쪽에서 오늘 먹은 메뉴를 한 줄로 적기",
-  "{dir}쪽 모퉁이를 돌 때 속도를 늦추기",
-  "{dir}쪽으로 걸으며 좋은 냄새를 하나 찾기",
-  "{dir}쪽 계단이 있으면 한 층만 걸어 보기",
-  "{dir}쪽에서 아는 사람에게 안부 한 줄 보내기",
-  "{dir}쪽으로 {m}m 가는 동안 화면을 주머니에 넣기",
-  "{dir}쪽 밝은 간판 아래에서 숨 한 번 고르기",
-  "{dir}쪽으로 걷다 처음 보는 가게 이름을 기억하기",
-  "{dir}쪽에서 양말을 바로 신고 다시 걷기",
-  "{dir}쪽으로 {m}m, 돌아오는 길은 더 천천히",
-  "{dir}쪽 공터나 공원 입구까지 가 보기",
-  "{dir}쪽에서 오늘 감사한 일을 하나만 떠올리기",
-  "{dir}쪽으로 가며 새 소리나 차 소리를 구분해 보기",
-  "{dir}쪽 그늘에서 목과 손목을 한 바퀴 돌리기",
-  "{dir}쪽으로 걷고, 도착하면 물을 한 모금 마시기",
-  "{dir}쪽 도로가 아니라 사람이 적은 길을 골라 보기",
-  "{dir}쪽으로 {m}m 걸어 오늘의 색을 하나 찾기",
-  "{dir}쪽에서 신발을 털고 다시 매기",
-  "{dir}쪽을 바라보고 오늘 할 일 하나만 정하기",
+export const TIMES = [
+  { id: "dawn", label: "새벽", range: "5–7시" },
+  { id: "morning", label: "아침", range: "7–9시" },
+  { id: "forenoon", label: "오전", range: "9–12시" },
+  { id: "noon", label: "점심", range: "12–14시" },
+  { id: "afternoon", label: "오후", range: "14–17시" },
+  { id: "evening", label: "저녁", range: "17–20시" },
+  { id: "night", label: "밤", range: "20–23시" },
+  { id: "late", label: "늦은 밤", range: "23–1시" },
 ];
 
-const DISTANCES = [120, 180, 240, 300, 360, 420];
-
-export const POOLS = { summary: SUMMARIES, money: MONEY, love: LOVE, health: HEALTH, color: COLORS, mission: MISSIONS };
+export const POOLS = { ...TEXT_POOLS, color: COLORS };
+export { NEIGHBORHOODS, placeLabel };
 
 export function sphericalMidpoint(points) {
   if (!Array.isArray(points) || !points.length) return null;
@@ -249,6 +104,23 @@ export function gridCell(lat, lng) {
   return { latCell, lngCell };
 }
 
+export function nearestPlace(lat, lng) {
+  let best = NEIGHBORHOODS[0];
+  let bestDistance = Infinity;
+  for (const place of NEIGHBORHOODS) {
+    const distance = distanceMeters({ lat, lng }, place);
+    if (distance < bestDistance) {
+      best = place;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+export function pickPlace(random = Math.random) {
+  return NEIGHBORHOODS[Math.floor(random() * NEIGHBORHOODS.length)];
+}
+
 export function seoulDate(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -258,41 +130,77 @@ export function seoulDate(now = new Date()) {
   }).format(now);
 }
 
-export function fortuneFor(lat, lng, date = seoulDate()) {
-  const cell = gridCell(lat, lng);
-  const random = mulberry32(fnv1a(`${date}|${cell.latCell}|${cell.lngCell}`));
+export function fortuneFor(lat, lng, date = seoulDate(), place = nearestPlace(lat, lng)) {
+  const random = mulberry32(fnv1a(`${date}|${place.id}`));
   const direction = DIRECTIONS[Math.floor(random() * DIRECTIONS.length)];
   const colorPair = COLORS[Math.floor(random() * COLORS.length)];
-  const mission = MISSIONS[Math.floor(random() * MISSIONS.length)]
+  const time = TIMES[Math.floor(random() * TIMES.length)];
+  const number = 1 + Math.floor(random() * 45);
+  const score = 58 + Math.floor(random() * 42);
+  const summary = pick(SUMMARIES, random);
+  const overall = [
+    pick(OPENINGS, random),
+    pick(MORNINGS, random),
+    pick(AFTERNOONS, random),
+    pick(EVENINGS, random),
+    pick(ADVICES, random),
+  ];
+  if (random() < 0.4) overall.pop();
+  const money = take(MONEY, random() < 0.45 ? 2 : 3, random);
+  const love = take(LOVE, random() < 0.45 ? 2 : 3, random);
+  const health = take(HEALTH, random() < 0.45 ? 2 : 3, random);
+  const work = take(WORK, random() < 0.45 ? 2 : 3, random);
+  const people = take(PEOPLE, random() < 0.45 ? 2 : 3, random);
+  const caution = take(CAUTIONS, 2, random);
+  const word = pick(WORDS, random);
+  const mission = pick(MISSIONS, random)
     .replaceAll("{dir}", direction.label)
     .replaceAll("{m}", String(DISTANCES[Math.floor(random() * DISTANCES.length)]));
   return {
     date,
-    cell,
-    score: 58 + Math.floor(random() * 42),
-    summary: pick(SUMMARIES, random),
-    money: pick(MONEY, random),
-    love: pick(LOVE, random),
-    health: pick(HEALTH, random),
+    place,
+    placeLabel: placeLabel(place),
+    score,
+    summary,
+    overall,
+    money,
+    love,
+    health,
+    work,
+    people,
+    caution,
+    word,
     direction,
     color: { name: colorPair[0], hex: colorPair[1] },
-    number: 1 + Math.floor(random() * 45),
+    number,
+    time,
     mission,
+    stars: {
+      overall: clampStar(3 + Math.floor((score - 58) / 21)),
+      money: 1 + Math.floor(random() * 5),
+      love: 1 + Math.floor(random() * 5),
+      health: 1 + Math.floor(random() * 5),
+      work: 1 + Math.floor(random() * 5),
+      people: 1 + Math.floor(random() * 5),
+    },
   };
 }
 
 export function shareText(result, pageUrl = "") {
   const lines = [
     "오늘의 위치 운세 · 재미용",
-    `이 근처 총운 ${result.score}점`,
-    result.summary,
-    `금전: ${result.money}`,
-    `연애: ${result.love}`,
-    `건강: ${result.health}`,
-    `행운의 방향: ${result.direction.label}쪽`,
-    `행운의 색: ${result.color.name}`,
-    `행운의 숫자: ${result.number}`,
-    `오늘의 미션: ${result.mission}`,
+    `오늘은 ${result.placeLabel}의 운세`,
+    `총운 ${result.score}점. ${result.summary}`,
+    result.overall[0],
+    `금전: ${result.money[0]}`,
+    `연애: ${result.love[0]}`,
+    `건강: ${result.health[0]}`,
+    `직장·학업: ${result.work[0]}`,
+    `대인관계: ${result.people[0]}`,
+    `조심할 것: ${result.caution[0]}`,
+    `한마디: ${result.word}`,
+    `행운: ${result.direction.label}쪽, ${result.color.name}, ${result.number}, ${result.time.label} ${result.time.range}`,
+    `미션: ${result.mission}`,
   ];
   if (pageUrl) lines.push(String(pageUrl).split("?")[0].split("#")[0]);
   return lines.join("\n");
@@ -359,6 +267,19 @@ function roundPoint(point) {
 
 function pick(list, random) {
   return list[Math.floor(random() * list.length)];
+}
+
+function take(list, count, random) {
+  const copy = list.slice();
+  const chosen = [];
+  for (let index = 0; index < count && copy.length; index += 1) {
+    chosen.push(copy.splice(Math.floor(random() * copy.length), 1)[0]);
+  }
+  return chosen;
+}
+
+function clampStar(value) {
+  return Math.max(1, Math.min(5, value));
 }
 
 function fnv1a(text) {

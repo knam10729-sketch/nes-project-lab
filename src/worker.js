@@ -22,9 +22,11 @@ async function handleGames(request, env, url) {
   if (path === "/games/fortune" || path === "/games/fortune/") return serve(request, env, "/games/fortune.html");
   if (path === "/games/meet" || path === "/games/meet/") return serve(request, env, "/games/meet.html");
   if (/^\/games\/meet\/[a-z2-9]{8}\/?$/.test(path)) return serve(request, env, "/games/meet.html");
+  if (path.startsWith("/games/vendor/leaflet/")) return env.ASSETS.fetch(request);
   if ([
     "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/mole-view.js",
-    "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/vendor/qrcode.js", "/games/games.css",
+    "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/locate.js", "/games/map-view.js",
+    "/games/neighborhoods.js", "/games/fortune-text.js", "/games/vendor/qrcode.js", "/games/games.css",
   ].includes(path)) return env.ASSETS.fetch(request);
   const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");

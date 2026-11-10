@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { attachMeet, sanitizePin } from "../games/geo.js";
+import { attachMeet } from "../games/geo.js";
+import { handleMeetAction } from "../games/meet-pins.js";
 import { alarmAt, applyAction, armBot, createRoom, joinRoom, present, seatForToken, secretFor } from "./room-logic.js";
 
 export class GameRoom extends DurableObject {
@@ -163,14 +164,11 @@ export class GameRoom extends DurableObject {
       return;
     }
     if (!this.pins) this.pins = new Map();
-    if (action.type === "clearPin") this.pins.delete(seat);
-    else {
-      const pin = sanitizePin(action);
-      if (!pin) {
-        send(ws, { type: "error", error: "지도에서 다시 골라 주세요." });
-        return;
-      }
-      this.pins.set(seat, pin);
+    const result = handleMeetAction(this.pins, room, seat, action);
+    this.pins = result.pins;
+    if (!result.ok) {
+      send(ws, { type: "error", error: result.error });
+      return;
     }
     await this.#broadcast(room);
   }

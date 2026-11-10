@@ -163,8 +163,37 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 28px}
 .mid-label{font-weight:800}
 .actions a.primary{display:inline-flex;align-items:center;min-height:44px;text-decoration:none}
 .fun-badge{display:inline-block;border:1px solid var(--ink);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;letter-spacing:.08em}
-.score-num{font-size:72px;line-height:.9;font-weight:900;letter-spacing:-.06em;margin:8px 0}
-.fortune-line{font-size:17px;line-height:1.65;margin:8px 0}
+.fun-disclaimer{color:var(--muted);font-size:13px;line-height:1.55;margin-top:0}
+.fortune-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.fortune-actions button{min-height:48px;width:100%}
+.fortune-hero{background:var(--surface);background:linear-gradient(165deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));border:1px solid var(--line);border-radius:24px;padding:18px 16px 16px;text-align:center;margin:8px 0 14px}
+.fortune-hero h2{font-size:clamp(22px,5vw,30px);letter-spacing:-.04em;margin:8px 0}
+.fortune-kicker{color:var(--muted);margin:0}
+.fortune-summary{font-size:18px;line-height:1.5;margin:8px 0 0}
+.gauge{position:relative;width:148px;height:148px;margin:6px auto}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge-track{fill:none;stroke:var(--line);stroke-width:10}
+.gauge-value{fill:none;stroke:var(--ink);stroke-width:10;stroke-linecap:round}
+.gauge strong{position:absolute;inset:0;display:grid;place-items:center;font-size:42px;letter-spacing:-.06em}
+.fortune-grid{display:grid;gap:10px}
+.fortune-card,.mission-card,.caution-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px}
+.fortune-card header{display:flex;align-items:center;gap:8px}
+.fortune-card h3,.caution-card h3{margin:0;font-size:16px}
+.fortune-card p,.caution-card p,.mission-card p{line-height:1.65;margin:8px 0 0}
+.fortune-icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--surface-alt);flex:none}
+.fortune-icon svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.stars{margin-left:auto;letter-spacing:.06em}
+.meter{height:8px;border-radius:99px;background:var(--surface-alt);overflow:hidden;margin:10px 0 4px}
+.meter span{display:block;height:100%;background:var(--ink)}
+.luck-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.luck-chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:800}
+.mini-compass{width:18px;height:18px;border:1.5px solid var(--ink);border-radius:50%;position:relative;display:inline-block}
+.mini-compass b{position:absolute;left:50%;bottom:50%;width:2px;height:7px;background:var(--ink);transform-origin:50% 100%;transform:translateX(-50%) rotate(var(--deg))}
+.mission-card{background:var(--surface);background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 20%, var(--surface)), var(--surface));margin-top:4px}
+.one-word{margin:12px 0;padding:14px 16px;border-left:3px solid var(--ink);font-size:18px;line-height:1.55}
+.fortune-reveal{animation:fortune-rise .45s ease both}
+@keyframes fortune-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fortune-reveal{animation:none}}
 .color-row{display:flex;align-items:center;gap:8px}
 .swatch-dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);display:inline-block}
 .compass{width:168px;height:168px;border-radius:50%;border:2px solid var(--line);margin:12px auto;position:relative;background:var(--surface)}
