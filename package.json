@@ -1,0 +1,14 @@
+{
+  "name": "nes-project-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev -c wrangler.games.jsonc --port 8787",
+    "build": "wrangler deploy -c wrangler.games.jsonc --dry-run --outdir dist/games-worker",
+    "deploy:games": "wrangler deploy -c wrangler.games.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.50.0"
+  }
+}
