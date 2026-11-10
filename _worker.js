@@ -5,6 +5,11 @@ const COOKIE_PREFIX = 'nescal_';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/about' || url.pathname === '/about/') {
+      const home = new URL(request.url);
+      home.pathname = '/';
+      return env.ASSETS.fetch(new Request(home, request));
+    }
     const calendar = url.pathname === PREFIX || url.pathname.startsWith(PREFIX + '/');
     const api = url.pathname.startsWith('/api/');
     if (!calendar && !api) return env.ASSETS.fetch(request);
