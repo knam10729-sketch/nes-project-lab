@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { alarmAt, applyAction, createRoom, joinRoom, present, seatForToken, secretFor } from "./room-logic.js";
+import { alarmAt, applyAction, armBot, createRoom, joinRoom, present, seatForToken, secretFor } from "./room-logic.js";
 
 export class GameRoom extends DurableObject {
   constructor(ctx, env) {
@@ -36,12 +36,11 @@ export class GameRoom extends DurableObject {
       return;
     }
     if (!action || typeof action !== "object") return;
-    const result = applyAction(room, seatOf(ws), action, Date.now());
-    if (result.room && result.changed) {
-      await this.#save(result.room);
-      await this.#schedule(result.room);
-    }
+    const now = Date.now();
+    const result = settle(applyAction(room, seatOf(ws), action, now), now);
     const current = result.room || room;
+    if (result.room && result.changed) await this.#save(result.room);
+    await this.#schedule(current);
     if (result.inkOnly && result.ink) await this.#broadcastInk(result.ink);
     else if (result.changed || action.type === "sync" || action.type === "hello") await this.#broadcast(current);
     if (!result.ok) send(ws, { type: "error", error: result.error });
@@ -55,11 +54,12 @@ export class GameRoom extends DurableObject {
   async alarm() {
     const room = await this.#load();
     if (!room) return;
-    const result = applyAction(room, null, { type: "sync" }, Date.now());
+    const now = Date.now();
+    const result = settle(applyAction(room, null, { type: "sync" }, now), now);
     const current = result.room || room;
     if (result.changed) await this.#save(current);
     await this.#schedule(current);
-    await this.#broadcast(current);
+    if (result.changed) await this.#broadcast(current);
   }
 
   async #create(body) {
@@ -70,9 +70,15 @@ export class GameRoom extends DurableObject {
       name: body.name,
       token: body.token,
       now: Date.now(),
+      solo: body.solo === true,
+      difficulty: body.difficulty,
+      category: body.category,
     });
     if (!created.ok) return json({ error: created.error }, created.status || 400);
+    const now = Date.now();
+    armBot(created.room, now);
     await this.#save(created.room);
+    await this.#schedule(created.room);
     return json({ roomId: created.room.roomId, game: created.room.game, seat: 0, token: body.token });
   }
 
@@ -132,6 +138,11 @@ export class GameRoom extends DurableObject {
   async #save(room) {
     await this.ctx.storage.put("room", room);
   }
+}
+
+function settle(result, now) {
+  if (result?.room) armBot(result.room, now);
+  return result;
 }
 
 function seatOf(ws) {

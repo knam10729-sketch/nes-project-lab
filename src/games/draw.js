@@ -24,10 +24,19 @@ export function initialState() {
   };
 }
 
-export function begin(state, playerCount, wordIndex, now) {
+export function begin(state, playerCount, wordIndex, now, options = {}) {
   const count = Number(playerCount);
   if (count < 2 || count > 5) return { ok: false, error: "players" };
-  return { ok: true, state: openRound({ ...initialState(), scores: Array(count).fill(0), playerCount: count, totalRounds: count }, 0, wordIndex, now) };
+  const base = {
+    ...initialState(),
+    scores: Array(count).fill(0),
+    playerCount: count,
+    totalRounds: options.rounds || count,
+    soloGuess: Boolean(options.soloGuess),
+    botDrawer: options.botDrawer ?? 0,
+    pack: options.pack || null,
+  };
+  return { ok: true, state: openRound(base, 0, wordIndex, now) };
 }
 
 export function tick(state, now) {
@@ -128,12 +137,15 @@ export function wordCount() {
 }
 
 function openRound(state, round, wordIndex, now) {
-  const word = drawWord(wordIndex + round * 17);
+  const item = state.pack ? state.pack[round % state.pack.length] : null;
+  const word = item ? item.word : drawWord(wordIndex + round * 17);
   return {
     ...state,
     phase: "draw",
-    drawer: round % state.playerCount,
+    drawer: state.soloGuess ? state.botDrawer : round % state.playerCount,
     word,
+    script: item ? item.strokes : null,
+    scriptCursor: 0,
     hint: null,
     startedAt: now,
     hintAt: now + HINT_MS,

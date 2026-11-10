@@ -19,7 +19,7 @@ async function handleGames(request, env, url) {
   const path = url.pathname;
   if (path.startsWith("/play-api/")) return handleApi(request, env, url);
   if (path === "/games" || path === "/games/" || path === "/games/index.html") return serve(request, env, "/games/index.html");
-  if (path === "/games/play.html" || path === "/games/client.js" || path === "/games/party.js" || path === "/games/games.css") return env.ASSETS.fetch(request);
+  if (["/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/vendor/qrcode.js", "/games/games.css"].includes(path)) return env.ASSETS.fetch(request);
   const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);
@@ -47,7 +47,15 @@ async function createApi(request, env, url) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const roomId = randomRoomId();
     const token = randomToken();
-    const response = await callRoom(env, roomId, "/create", { game: body.game, roomId, name: body.name, token });
+    const response = await callRoom(env, roomId, "/create", {
+      game: body.game,
+      roomId,
+      name: body.name,
+      token,
+      solo: body.solo === true,
+      difficulty: body.difficulty === "normal" ? "normal" : "easy",
+      category: typeof body.category === "string" ? body.category : "food",
+    });
     if (response.status !== 409) return response;
   }
   return json({ error: "방을 만들지 못했습니다. 다시 시도해 주세요." }, 500);

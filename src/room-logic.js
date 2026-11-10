@@ -5,6 +5,9 @@ import { begin as beginDraw, clearBoard, guess as guessDraw, initialState as dra
 import { begin as beginLiar, guess as guessLiar, hint as hintLiar, initialState as liarInitial, publicView as liarView, secretFor as liarSecret, vote as voteLiar } from "./games/liar.js";
 import { hit, initialState as moleInitial, MOLE_DURATION, nextAlarmAt, startRound, tick, winnerOf } from "./games/mole.js";
 import { begin as beginYut, burn, initialState as yutInitial, options as yutOptions, play as playYut, toss } from "./games/yut.js";
+import { chooseChess, chooseGomoku, chooseJanggi, chooseLiarHint, chooseLiarVote, chooseYut, reactionDelay } from "./bots/choose.js";
+import { DRAWINGS } from "./bots/drawings.js";
+import { CATEGORIES } from "./games/words.js";
 
 export const GAMES = {
   gomoku: { max: 2, name: "오목" },
@@ -33,26 +36,28 @@ export function cleanName(name) {
   return text || "손님";
 }
 
-export function createRoom({ game, roomId, name, token, now = Date.now() }) {
+export function createRoom({ game, roomId, name, token, now = Date.now(), solo = false, difficulty = "easy", category = "food" }) {
   if (!GAMES[game]) return fail("알 수 없는 게임입니다.", 400);
   if (!/^[a-z2-9]{8}$/.test(String(roomId)) || !validToken(token)) return fail("방 정보가 올바르지 않습니다.", 400);
-  return {
-    ok: true,
-    room: {
-      game,
-      roomId,
-      createdAt: now,
-      firstSeat: 0,
-      round: 1,
-      status: "waiting",
-      seats: [{ name: cleanName(name), token }],
-      maxSeats: GAMES[game].max,
-      winnerSeat: null,
-      draw: false,
-      reason: null,
-      data: initialData(game),
-    },
+  const room = {
+    game,
+    roomId,
+    createdAt: now,
+    firstSeat: 0,
+    round: 1,
+    status: "waiting",
+    seats: [{ name: cleanName(name), token, bot: false }],
+    maxSeats: GAMES[game].max,
+    winnerSeat: null,
+    draw: false,
+    reason: null,
+    data: initialData(game),
+    solo: false,
+    difficulty: "easy",
+    botAt: null,
   };
+  if (solo) startSolo(room, now, difficulty, category);
+  return { ok: true, room };
 }
 
 export function seatForToken(room, token) {
@@ -88,7 +93,14 @@ export function applyAction(room, seat, action, now = Date.now()) {
     else syncDraw(next);
     changed = changed || next.status !== room.status;
   }
-  if (!action || action.type === "sync" || action.type === "hello") return { ok: true, room: next, changed };
+  if (!action || action.type === "sync" || action.type === "hello" || action.type === "bot") {
+    if (action?.type === "sync" || action?.type === "bot") {
+      if (stepIfDue(next, now)) changed = true;
+    }
+    armBot(next, now);
+    if (next.botAt !== room.botAt) changed = true;
+    return { ok: true, room: next, changed };
+  }
   if (!Number.isInteger(seat) || seat < 0 || seat >= next.seats.length) {
     return stopped("참가 중인 자리가 없습니다.", next, changed);
   }
@@ -98,7 +110,9 @@ export function applyAction(room, seat, action, now = Date.now()) {
   }
   if (action.type === "rematch") {
     if (next.status !== "over") return stopped("게임이 끝난 뒤에 다시 할 수 있습니다.", next, changed);
-    return { ok: true, room: rematch(next), changed: true };
+    const restarted = rematch(next, now);
+    armBot(restarted, now);
+    return { ok: true, room: restarted, changed: true };
   }
   if (next.game === "mole") return moleAction(next, seat, action, now, changed);
   if (PARTY.has(next.game)) return partyAction(next, seat, action, now, changed);
@@ -115,8 +129,11 @@ export function present(room, now = Date.now(), connected = []) {
     seats: room.seats.map((seat, index) => ({
       name: seat.name,
       color: colorOf(room, index),
-      connected: Boolean(connected[index]),
+      connected: Boolean(connected[index]) || Boolean(seat.bot),
+      bot: Boolean(seat.bot),
     })),
+    solo: Boolean(room.solo),
+    difficulty: room.difficulty || null,
     turnSeat: turnSeat(room),
     winnerSeat: room.winnerSeat,
     draw: room.draw,
@@ -138,9 +155,25 @@ export function secretFor(room, seat) {
 }
 
 export function alarmAt(room, now = Date.now()) {
-  if (room.game === "mole") return nextAlarmAt(room.data, now);
-  if (room.game === "draw") return drawAlarm(room.data, now);
-  return null;
+  const times = [];
+  if (room.game === "mole") {
+    const at = nextAlarmAt(room.data, now);
+    if (at) times.push(at);
+  }
+  if (room.game === "draw") {
+    const at = drawAlarm(room.data, now);
+    if (at) times.push(at);
+  }
+  if (room.botAt != null) times.push(room.botAt);
+  return times.length ? Math.min(...times) : null;
+}
+
+export function forceBot(room, now = Date.now()) {
+  const next = clone(room);
+  next.botAt = now;
+  const acted = stepIfDue(next, now);
+  armBot(next, now);
+  return { ok: acted, room: next };
 }
 
 function moleAction(room, seat, action, now, changed) {
@@ -189,12 +222,20 @@ function finishBoard(room, result) {
   room.winnerSeat = seatForSide(room, result.winner);
 }
 
-function rematch(room) {
+function rematch(room, now = Date.now()) {
   const next = clone(room);
   next.round += 1;
   next.winnerSeat = null;
   next.draw = false;
   next.reason = null;
+  next.botAt = null;
+  if (next.solo) {
+    next.data = initialData(next.game);
+    next.status = "waiting";
+    next.firstSeat = 0;
+    startSolo(next, now, next.difficulty, room.data.categoryId || "food", false);
+    return next;
+  }
   if (PARTY.has(next.game)) {
     next.status = "waiting";
     next.data = initialData(next.game);
@@ -415,6 +456,233 @@ function randomInt(max) {
   const bytes = new Uint32Array(1);
   crypto.getRandomValues(bytes);
   return bytes[0] % max;
+}
+
+const BOT_NAMES = ["봇 하나", "봇 둘", "봇 셋"];
+
+function startSolo(room, now, difficulty, category, addPlayers = true) {
+  room.solo = true;
+  room.difficulty = difficulty === "normal" ? "normal" : "easy";
+  if (addPlayers) {
+    const count = soloBotCount(room.game, room.difficulty);
+    for (let index = 0; index < count && room.seats.length < room.maxSeats; index += 1) {
+      room.seats.push({ name: BOT_NAMES[index] || `봇 ${index + 1}`, token: randomToken(), bot: true });
+    }
+  }
+  const players = room.seats.length;
+  if (room.game === "gomoku" || room.game === "chess" || room.game === "janggi") {
+    room.status = "playing";
+    return;
+  }
+  if (room.game === "mole") {
+    const started = startRound(room.data, now, players);
+    if (started.ok) room.data = started.state;
+  } else if (room.game === "yut") {
+    const started = beginYut(room.data, players, false);
+    if (started.ok) room.data = started.state;
+  } else if (room.game === "liar") {
+    const picked = CATEGORIES[category] ? category : "food";
+    const started = beginLiar(room.data, players, picked, randomInt(players), randomInt(30));
+    if (started.ok) room.data = started.state;
+  } else if (room.game === "draw") {
+    const started = beginDraw(room.data, players, randomInt(1000), now, {
+      rounds: 5,
+      soloGuess: true,
+      botDrawer: 1,
+      pack: DRAWINGS,
+    });
+    if (started.ok) room.data = started.state;
+  }
+  room.status = "playing";
+}
+
+function soloBotCount(game, difficulty) {
+  if (game === "mole" || game === "yut") return difficulty === "normal" ? 2 : 1;
+  if (game === "liar") return difficulty === "normal" ? 3 : 2;
+  return 1;
+}
+
+function randomToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+export function armBot(room, now = Date.now()) {
+  if (!room?.solo || room.status !== "playing") {
+    if (room) room.botAt = null;
+    return;
+  }
+  if (room.game === "mole") {
+    ensureMolePlans(room);
+    const due = Object.values(room.data.botPlans || {});
+    room.botAt = due.length ? Math.min(...due) : null;
+    return;
+  }
+  if (room.game === "draw" && room.data.phase === "draw" && room.seats[room.data.drawer]?.bot) {
+    const cursor = room.data.scriptCursor || 0;
+    if (cursor < (room.data.script || []).length) {
+      if (room.botAt == null) room.botAt = now + (room.difficulty === "normal" ? 120 : 220);
+      return;
+    }
+  }
+  if (room.game === "liar" && room.data.phase === "vote") {
+    const waiting = room.seats.some((seat, index) => seat.bot && room.data.votes[index] == null);
+    if (waiting) {
+      if (room.botAt == null) room.botAt = now + 450;
+      return;
+    }
+  }
+  const seat = turnSeat(room);
+  if (seat == null || !room.seats[seat]?.bot || room.data.phase === "over") {
+    room.botAt = null;
+    return;
+  }
+  if (room.botAt == null) room.botAt = now + (room.difficulty === "normal" ? 280 : 640);
+}
+
+function stepIfDue(room, now) {
+  if (!room.solo) return false;
+  if (room.game === "mole") ensureMolePlans(room);
+  if (room.botAt == null || room.botAt > now) return false;
+  const acted = actBot(room, now);
+  room.botAt = null;
+  return acted;
+}
+
+function actBot(room, now) {
+  if (room.game === "mole") return actMole(room, now);
+  if (room.game === "draw") return actDraw(room);
+  if (room.game === "yut") return actYut(room);
+  if (room.game === "liar") return actLiar(room);
+  if (room.game === "gomoku" || room.game === "chess" || room.game === "janggi") return actBoard(room);
+  return false;
+}
+
+function actBoard(room) {
+  const move = room.game === "chess"
+    ? chooseChess(room.data, room.difficulty)
+    : room.game === "janggi"
+      ? chooseJanggi(room.data, room.difficulty)
+      : chooseGomoku(room.data);
+  const result = applyBoard(room.game, room.data, move);
+  if (!result.ok) return false;
+  room.data = result.state;
+  if (result.over) finishBoard(room, result);
+  return true;
+}
+
+function actYut(room) {
+  if (room.data.phase === "throw") {
+    const bytes = new Uint8Array(1);
+    crypto.getRandomValues(bytes);
+    const result = toss(room.data, bytes[0]);
+    if (!result.ok) return false;
+    room.data = result.state;
+    return true;
+  }
+  const choice = chooseYut(room.data);
+  if (!choice) {
+    const ticket = room.data.pending[0];
+    if (!ticket) return false;
+    const burned = burn(room.data, ticket.id);
+    if (!burned.ok) return false;
+    room.data = burned.state;
+    return true;
+  }
+  const result = playYut(room.data, choice.pieceId, choice.throwId);
+  if (!result.ok) return false;
+  room.data = result.state;
+  if (result.over) finishYut(room, result.winnerOwner);
+  return true;
+}
+
+function actLiar(room) {
+  if (room.data.phase === "hint" && room.seats[room.data.turn]?.bot) {
+    const used = room.data.hints.filter((hint) => hint.seat === room.data.turn).map((hint) => hint.text);
+    const text = chooseLiarHint(room.data.word, room.data.category, room.data.turn === room.data.liar, used);
+    const result = hintLiar(room.data, room.data.turn, text);
+    if (!result.ok) return false;
+    room.data = result.state;
+    if (room.data.phase === "over") finishLiarRoom(room);
+    return true;
+  }
+  if (room.data.phase === "guess" && room.seats[room.data.liar]?.bot) {
+    const words = CATEGORIES[room.data.categoryId]?.words || ["추측"];
+    const result = guessLiar(room.data, room.data.liar, words[randomInt(words.length)]);
+    if (!result.ok) return false;
+    room.data = result.state;
+    finishLiarRoom(room);
+    return true;
+  }
+  if (room.data.phase === "vote") {
+    const seat = room.seats.findIndex((player, index) => player.bot && room.data.votes[index] == null);
+    if (seat < 0) return false;
+    const result = voteLiar(room.data, seat, chooseLiarVote(room.data, seat));
+    if (!result.ok) return false;
+    room.data = result.state;
+    if (room.data.phase === "over" || room.data.phase === "guess") finishLiarRoom(room);
+    return true;
+  }
+  return false;
+}
+
+function finishLiarRoom(room) {
+  if (room.data.phase !== "over") return;
+  const liarWins = room.data.result === "escaped" || room.data.result === "guessed";
+  room.status = "over";
+  room.reason = room.data.result;
+  room.winnerSeat = liarWins ? room.data.liar : null;
+  room.draw = false;
+}
+
+function actDraw(room) {
+  const script = room.data.script || [];
+  const cursor = room.data.scriptCursor || 0;
+  if (room.data.phase !== "draw" || cursor >= script.length) return false;
+  const stroke = script[cursor];
+  room.data.strokes = [...(room.data.strokes || []), {
+    id: `bot${room.data.round}-${cursor}`,
+    color: stroke.color || "#171717",
+    erase: false,
+    points: stroke.points,
+  }];
+  room.data.scriptCursor = cursor + 1;
+  return true;
+}
+
+function actMole(room, now) {
+  ensureMolePlans(room);
+  let choice = null;
+  for (const [key, at] of Object.entries(room.data.botPlans || {})) {
+    if (at > now) continue;
+    const [id, seat] = key.split(":").map(Number);
+    if (!room.data.active.some((mole) => mole.id === id)) {
+      delete room.data.botPlans[key];
+      continue;
+    }
+    if (!choice || at < choice.at) choice = { key, id, seat, at };
+  }
+  if (!choice) return false;
+  delete room.data.botPlans[choice.key];
+  const result = hit(room.data, choice.seat, choice.id, now);
+  if (result.ok) {
+    room.data = { ...result.state, botPlans: room.data.botPlans };
+  }
+  return true;
+}
+
+function ensureMolePlans(room) {
+  if (!room.data.botPlans) room.data.botPlans = {};
+  for (const mole of room.data.active || []) {
+    room.seats.forEach((seat, index) => {
+      if (!seat.bot) return;
+      const key = `${mole.id}:${index}`;
+      if (room.data.botPlans[key] == null) {
+        room.data.botPlans[key] = mole.spawnedAt + reactionDelay(room.difficulty, mole.id, index);
+      }
+    });
+  }
 }
 
 function currentTurn(room) {

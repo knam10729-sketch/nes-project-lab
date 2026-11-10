@@ -1,4 +1,5 @@
 import { applyInk, partyTurn, remember, renderParty } from "./party.js";
+import { drawQr } from "./qr.js";
 
 const PARTY = new Set(["yut", "liar", "draw"]);
 const META = {
@@ -73,16 +74,50 @@ function mountSetup() {
   input.autocomplete = "nickname";
   const button = el("button", { className: "primary", id: "create", type: "submit", text: "방 만들기" });
   const note = el("p", { className: "note", id: "note" });
-  form.append(label, input, button, note);
+  const difficulty = { value: "easy" };
+  const diff = el("div", { className: "diff" });
+  const easy = el("button", { type: "button", id: "easy", className: "primary", text: "쉬움" });
+  const normal = el("button", { type: "button", id: "normal", text: "보통" });
+  easy.addEventListener("click", () => {
+    difficulty.value = "easy";
+    easy.className = "primary";
+    normal.className = "";
+  });
+  normal.addEventListener("click", () => {
+    difficulty.value = "normal";
+    normal.className = "primary";
+    easy.className = "";
+  });
+  diff.append(easy, normal);
+  let category = null;
+  if (game === "liar") {
+    category = document.createElement("select");
+    category.id = "setup-category";
+    for (const [id, labelText] of [["food", "음식"], ["animal", "동물"], ["place", "장소"], ["job", "직업"], ["thing", "물건"], ["show", "영화·드라마"]]) {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = labelText;
+      category.append(option);
+    }
+  }
+  const solo = el("button", { type: "button", id: "solo", text: "혼자서 봇과 하기" });
+  solo.addEventListener("click", async () => {
+    solo.disabled = true;
+    note.textContent = "봇과 방을 만드는 중";
+    try {
+      await createAndEnter(input.value, { solo: true, difficulty: difficulty.value, category: category?.value || "food" });
+    } catch (error) {
+      note.textContent = error.message;
+      solo.disabled = false;
+    }
+  });
+  form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     button.disabled = true;
     note.textContent = "방을 만드는 중";
     try {
-      const data = await post("/play-api/rooms", { game, name: input.value });
-      localStorage.setItem("nes-play-name", input.value.trim() || "손님");
-      localStorage.setItem(`nes-play:${data.roomId}`, JSON.stringify({ token: data.token, name: input.value, game }));
-      location.href = `/games/${game}/${data.roomId}`;
+      await createAndEnter(input.value, {});
     } catch (error) {
       note.textContent = error.message;
       button.disabled = false;
@@ -167,10 +202,22 @@ function mountTable() {
       setNote("링크를 길게 눌러 복사해 주세요.");
     }
   });
-  share.append(link, copy);
+  share.append(link, copy, el("button", { id: "qr-open", type: "button", text: "QR 보기" }));
+  share.querySelector("#qr-open").addEventListener("click", () => openQr());
+  const qrCard = el("div", { className: "qr-card", id: "qr-card" });
+  const qrCanvas = document.createElement("canvas");
+  qrCanvas.width = 360;
+  qrCanvas.height = 360;
+  qrCanvas.id = "qr-canvas";
+  qrCanvas.setAttribute("role", "img");
+  qrCanvas.setAttribute("aria-label", "방 입장 QR 코드. 누르면 크게 봅니다.");
+  drawQr(qrCanvas, location.href);
+  qrCanvas.addEventListener("click", () => openQr());
+  qrCard.append(qrCanvas, el("p", { className: "muted", text: "휴대폰 카메라로 비추면 바로 들어옵니다." }));
   app.replaceChildren(
     hud,
     share,
+    qrCard,
     el("div", { id: "scoreboard" }),
     el("div", { className: "clock", id: "clock", hidden: true }, [el("span")]),
     el("div", { className: "board-wrap", id: "board-wrap" }),
@@ -245,6 +292,7 @@ function render(state) {
     players.append(item);
   });
   hud.append(players);
+  syncQr(state);
   if (PARTY.has(state.game)) {
     renderParty({ state, secret, mySeat, send });
   } else {
@@ -582,6 +630,39 @@ function readSeat() {
     if (saved?.game === game && typeof saved.token === "string") return saved;
   } catch { /* Ignore a broken saved seat. */ }
   return {};
+}
+
+async function createAndEnter(name, extra) {
+  const data = await post("/play-api/rooms", { game, name, ...extra });
+  localStorage.setItem("nes-play-name", name.trim() || "손님");
+  localStorage.setItem(`nes-play:${data.roomId}`, JSON.stringify({ token: data.token, name, game }));
+  location.href = `/games/${game}/${data.roomId}`;
+}
+
+function openQr() {
+  let overlay = document.getElementById("qr-overlay");
+  if (!overlay) {
+    overlay = el("div", { id: "qr-overlay", className: "qr-overlay" });
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "크게 본 QR 코드");
+    overlay.addEventListener("click", () => overlay.classList.remove("open"));
+    document.body.append(overlay);
+  }
+  const canvas = document.createElement("canvas");
+  const size = Math.max(280, Math.min(window.innerWidth, window.innerHeight, 900) - 28);
+  canvas.width = size;
+  canvas.height = size;
+  drawQr(canvas, location.href);
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", "방 입장 QR 코드");
+  overlay.replaceChildren(canvas);
+  overlay.classList.add("open");
+}
+
+function syncQr(state) {
+  const card = document.getElementById("qr-card");
+  if (!card) return;
+  card.hidden = state?.status === "playing" || state?.status === "over";
 }
 
 async function post(path, body) {

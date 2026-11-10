@@ -9,6 +9,7 @@
     "deploy:games": "wrangler deploy -c wrangler.games.jsonc"
   },
   "devDependencies": {
+    "jsqr": "^1.4.0",
     "wrangler": "^4.50.0"
   }
 }
