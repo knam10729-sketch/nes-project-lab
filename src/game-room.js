@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { alarmAt, applyAction, createRoom, joinRoom, present, seatForToken } from "./room-logic.js";
+import { alarmAt, applyAction, createRoom, joinRoom, present, seatForToken, secretFor } from "./room-logic.js";
 
 export class GameRoom extends DurableObject {
   constructor(ctx, env) {
@@ -42,7 +42,8 @@ export class GameRoom extends DurableObject {
       await this.#schedule(result.room);
     }
     const current = result.room || room;
-    if (result.changed || action.type === "sync" || action.type === "hello") await this.#broadcast(current);
+    if (result.inkOnly && result.ink) await this.#broadcastInk(result.ink);
+    else if (result.changed || action.type === "sync" || action.type === "hello") await this.#broadcast(current);
     if (!result.ok) send(ws, { type: "error", error: result.error });
   }
 
@@ -105,8 +106,15 @@ export class GameRoom extends DurableObject {
       const seat = seatOf(ws);
       if (seat >= 0 && seat < connected.length) connected[seat] = true;
     }
-    const payload = JSON.stringify({ type: "state", state: present(room, Date.now(), connected) });
-    for (const ws of sockets) send(ws, null, payload);
+    for (const ws of sockets) {
+      const seat = seatOf(ws);
+      send(ws, { type: "state", state: present(room, Date.now(), connected), secret: secretFor(room, seat) });
+    }
+  }
+
+  async #broadcastInk(stroke) {
+    const payload = JSON.stringify({ type: "ink", stroke });
+    for (const ws of this.ctx.getWebSockets()) send(ws, null, payload);
   }
 
   async #schedule(room) {

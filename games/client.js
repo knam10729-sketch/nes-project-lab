@@ -1,8 +1,14 @@
+import { applyInk, partyTurn, remember, renderParty } from "./party.js";
+
+const PARTY = new Set(["yut", "liar", "draw"]);
 const META = {
   gomoku: ["오목", "15줄 판에서 번갈아 둡니다. 가로, 세로, 대각선으로 다섯 칸 이상 이어지면 이깁니다."],
   chess: ["체스", "캐슬링, 앙파상, 프로모션, 체크, 체크메이트, 스테일메이트까지 정식 규칙으로 둡니다."],
   janggi: ["장기", "궁성 대각선과 마·상의 막힘을 지키며 둡니다. 포는 포를 넘거나 잡을 수 없고, 장군과 외통을 가립니다."],
   mole: ["두더지 잡기 대결", "60초 동안 같은 두더지가 모두에게 동시에 나옵니다. 먼저 누른 사람이 점수를 가져갑니다. 1명에서 4명까지 할 수 있습니다."],
+  yut: ["윷놀이", "2명에서 4명. 윷을 던져 말을 움직이고, 업기, 잡기, 지름길을 서버가 판정합니다."],
+  liar: ["라이어 게임", "3명에서 5명. 한 사람만 단어를 모릅니다. 힌트를 주고 라이어를 찾으세요."],
+  draw: ["그림 맞히기", "2명에서 5명이 번갈아 그립니다. 먼저, 그리고 빠르게 맞힐수록 점수가 오릅니다."],
 };
 
 const REASONS = {
@@ -36,6 +42,7 @@ let delay = 400;
 let failures = 0;
 let stopped = false;
 let skew = 0;
+let secret = null;
 let syncedEnd = false;
 let frame = 0;
 
@@ -187,7 +194,11 @@ function connect() {
     let message;
     try { message = JSON.parse(event.data); } catch { return; }
     if (message.type === "welcome") mySeat = message.seat;
-    if (message.type === "state") render(message.state);
+    if (message.type === "ink") applyInk(message.stroke);
+    if (message.type === "state") {
+      secret = message.secret || null;
+      render(message.state);
+    }
     if (message.type === "error") {
       setNote(message.error);
       latest?.position?.active?.forEach((mole) => { delete mole.sent; });
@@ -208,6 +219,7 @@ function connect() {
 
 function render(state) {
   latest = state;
+  remember(state, mySeat);
   skew = state.now - Date.now();
   if (state.turnSeat !== mySeat) {
     selected = null;
@@ -233,11 +245,15 @@ function render(state) {
     players.append(item);
   });
   hud.append(players);
-  renderScore(state);
-  if (state.game === "mole") renderMole(state);
-  else renderBoard(state);
-  renderActions(state);
-  const offline = state.game !== "mole" && state.status === "playing"
+  if (PARTY.has(state.game)) {
+    renderParty({ state, secret, mySeat, send });
+  } else {
+    renderScore(state);
+    if (state.game === "mole") renderMole(state);
+    else renderBoard(state);
+    renderActions(state);
+  }
+  const offline = !PARTY.has(state.game) && state.game !== "mole" && state.status === "playing"
     && state.seats.some((seat, index) => index !== mySeat && !seat.connected);
   const disconnect = "상대 연결이 끊겼습니다. 같은 링크로 돌아오면 이어집니다.";
   const note = document.getElementById("note");
@@ -455,10 +471,21 @@ function tickClock() {
       send({ type: "sync" });
     }
   }
+  if (state?.game === "draw" && state.position.phase === "draw" && bar) {
+    const left = state.position.endsAt - serverNow();
+    bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 80000))) * 100}%`;
+    const turn = document.getElementById("turn");
+    if (turn) turn.textContent = `${partyTurn(state, mySeat, secret)} · ${Math.max(0, Math.ceil(left / 1000))}초`;
+    if (left < -200 && !syncedEnd) {
+      syncedEnd = true;
+      send({ type: "sync" });
+    }
+  }
   frame = requestAnimationFrame(tickClock);
 }
 
 function turnText(state) {
+  if (PARTY.has(state.game)) return partyTurn(state, mySeat, secret);
   if (state.game === "mole") {
     if (state.position.phase === "waiting") return mySeat === 0 ? "준비되면 시작을 누르세요" : "방장을 기다리는 중";
     if (state.status === "over") return outcome(state);
