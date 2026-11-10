@@ -151,4 +151,26 @@ button.point.han{background-color:#fbfbfb;color:#161616;box-shadow:0 0 0 1.5px #
 select{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px;font:inherit}
 footer{color:var(--muted);font-size:13px;padding:8px 0 28px}
 @media(max-width:780px){.cards,.steps{grid-template-columns:1fr}.nav{flex-wrap:wrap}.nav nav{flex:1;justify-content:flex-end}.hud{flex-direction:column}}
-@media(max-width:540px){.nav{align-items:stretch}.nav nav{justify-content:flex-start}.share{flex-direction:column}.promote{grid-template-columns:1fr 1fr}}
+.map-frame{height:min(58vh,520px);min-height:280px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#d7d3cb}
+.map-frame[hidden]{display:none}
+.map-credit{margin-top:8px}
+.notice-inline{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;line-height:1.6}
+.meet-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.meet-list li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.meet-list li.me{border-color:var(--ink)}
+.meet-list .dot{width:10px;height:10px;border-radius:50%;background:var(--dot,#888);flex:none}
+.meet-list span{color:var(--muted)}
+.mid-label{font-weight:800}
+.actions a.primary{display:inline-flex;align-items:center;min-height:44px;text-decoration:none}
+.fun-badge{display:inline-block;border:1px solid var(--ink);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;letter-spacing:.08em}
+.score-num{font-size:72px;line-height:.9;font-weight:900;letter-spacing:-.06em;margin:8px 0}
+.fortune-line{font-size:17px;line-height:1.65;margin:8px 0}
+.color-row{display:flex;align-items:center;gap:8px}
+.swatch-dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);display:inline-block}
+.compass{width:168px;height:168px;border-radius:50%;border:2px solid var(--line);margin:12px auto;position:relative;background:var(--surface)}
+.compass b{position:absolute;left:50%;top:10px;transform:translateX(-50%);font-size:13px}
+.needle{position:absolute;left:50%;bottom:50%;width:4px;height:42%;background:var(--ink);transform-origin:50% 100%;transform:translateX(-50%) rotate(var(--deg));border-radius:4px}
+.needle::before{content:"";position:absolute;left:50%;top:-7px;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid var(--ink)}
+.pin-tip{background:#fff;color:#111;border:0;border-radius:999px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.leaflet-control-attribution{font-size:11px;max-width:72%}
+@media(max-width:540px){.nav{align-items:stretch}.nav nav{justify-content:flex-start}.share{flex-direction:column}.promote{grid-template-columns:1fr 1fr}.score-num{font-size:60px}.actions a.primary,.actions button{flex:1 1 100%}}

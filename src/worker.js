@@ -1,7 +1,7 @@
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
 const PREFIX = "/calendar-app";
 const COOKIE_PREFIX = "nescal_";
-const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw"]);
+const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet"]);
 const ROOM = /^[a-z2-9]{8}$/;
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -19,7 +19,13 @@ async function handleGames(request, env, url) {
   const path = url.pathname;
   if (path.startsWith("/play-api/")) return handleApi(request, env, url);
   if (path === "/games" || path === "/games/" || path === "/games/index.html") return serve(request, env, "/games/index.html");
-  if (["/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/mole-view.js", "/games/vendor/qrcode.js", "/games/games.css"].includes(path)) return env.ASSETS.fetch(request);
+  if (path === "/games/fortune" || path === "/games/fortune/") return serve(request, env, "/games/fortune.html");
+  if (path === "/games/meet" || path === "/games/meet/") return serve(request, env, "/games/meet.html");
+  if (/^\/games\/meet\/[a-z2-9]{8}\/?$/.test(path)) return serve(request, env, "/games/meet.html");
+  if ([
+    "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/mole-view.js",
+    "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/vendor/qrcode.js", "/games/games.css",
+  ].includes(path)) return env.ASSETS.fetch(request);
   const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);

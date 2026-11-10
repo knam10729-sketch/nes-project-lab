@@ -17,6 +17,7 @@ export const GAMES = {
   yut: { max: 4, min: 2, name: "윷놀이" },
   liar: { max: 5, min: 3, name: "라이어 게임" },
   draw: { max: 5, min: 2, name: "그림 맞히기" },
+  meet: { max: 10, min: 2, name: "만남 중간지점" },
 };
 
 const PARTY = new Set(["mole", "yut", "liar", "draw"]);
@@ -62,7 +63,7 @@ export function createRoom({ game, roomId, name, token, now = Date.now(), solo =
   };
   if (MOLE_SECONDS.includes(Number(moleSeconds))) room.settings.moleMs = Number(moleSeconds) * 1000;
   if (DRAW_SECONDS.includes(Number(drawSeconds))) room.settings.drawMs = Number(drawSeconds) * 1000;
-  if (solo) startSolo(room, now, difficulty, category);
+  if (solo && game !== "meet") startSolo(room, now, difficulty, category);
   return { ok: true, room };
 }
 
@@ -121,6 +122,7 @@ export function applyAction(room, seat, action, now = Date.now()) {
     armBot(restarted, now);
     return { ok: true, room: restarted, changed: true };
   }
+  if (next.game === "meet") return stopped("위치는 이 연결 동안에만 유지됩니다.", next, changed);
   if (next.game === "mole") return moleAction(next, seat, action, now, changed);
   if (PARTY.has(next.game)) return partyAction(next, seat, action, now, changed);
   return boardAction(next, seat, action);
@@ -291,6 +293,7 @@ function publicPosition(room) {
   if (room.game === "yut") return yutView(room.data);
   if (room.game === "liar") return liarView(room.data);
   if (room.game === "draw") return drawView(room.data);
+  if (room.game === "meet") return { kind: "meet" };
   return {
     phase: room.data.phase,
     startedAt: room.data.startedAt,
@@ -316,6 +319,7 @@ function initialData(game) {
   if (game === "yut") return yutInitial();
   if (game === "liar") return liarInitial();
   if (game === "draw") return drawInitial();
+  if (game === "meet") return { kind: "meet" };
   return moleInitial(1);
 }
 
