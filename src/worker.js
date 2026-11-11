@@ -8,12 +8,23 @@ const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/ideas" || url.pathname.startsWith("/ideas/")) return handleIdeas(request, env, url);
     if (url.pathname === "/games" || url.pathname.startsWith("/games/") || url.pathname.startsWith("/play-api/")) {
       return handleGames(request, env, url);
     }
     return handleSite(request, env, url);
   },
 };
+
+async function handleIdeas(request, env, url) {
+  const path = url.pathname.replace(/\/+$/, "") || "/ideas";
+  if (path === "/ideas") return serve(request, env, "/ideas/index.html");
+  if (/^\/ideas\/\d+$/.test(path)) return serve(request, env, "/ideas/detail.html");
+  if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/ideas.css"].includes(path)) {
+    return env.ASSETS.fetch(request);
+  }
+  return text("페이지를 찾을 수 없습니다.", 404);
+}
 
 async function handleGames(request, env, url) {
   const path = url.pathname;
