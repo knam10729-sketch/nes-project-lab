@@ -1,5 +1,21 @@
 .idea-wrap{max-width:980px;margin:auto;padding:28px 18px 72px}
-.lock-form{margin:0 0 8px}
+.lock-form{margin:14px 0 8px}
+.chips,.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.chips span,.swatch{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-alt);font-weight:700}
+.swatch i{width:16px;height:16px;border-radius:50%;border:1px solid var(--line)}
+.shot{margin:12px 0}
+.shot img{width:100%;height:auto;border-radius:18px;display:block}
+.keyrings{display:grid;gap:12px}
+.keyrings h3{margin:0 0 6px;font-size:18px}
+.comments{display:grid;gap:12px}
+.comments form{display:grid;gap:8px}
+.comments input,.comments textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;padding:12px}
+.comments textarea{min-height:96px;resize:vertical}
+.comments button,.comment button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--accent);color:var(--on-accent);font:inherit;font-weight:800}
+.comment{background:var(--surface-alt);border-radius:14px;padding:12px}
+.comment header{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.comment button{background:transparent;color:var(--ink);padding:8px 10px}
+.comment p{margin:8px 0 0;white-space:pre-wrap}
 .lock-form button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:800;padding:10px 14px}
 .idea-wrap h1{font-size:clamp(34px,7vw,58px);letter-spacing:-.055em;line-height:1.08;margin:10px 0 12px}
 .board{display:grid;gap:12px;margin-top:22px}

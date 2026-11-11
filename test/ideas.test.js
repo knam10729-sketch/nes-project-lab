@@ -4,7 +4,14 @@ import handler from "../src/worker.js";
 import { ideaById, ideaProgress, ideas } from "../ideas/data.js";
 
 test("the idea board has one planning item and the report numbers", () => {
-  assert.equal(ideas.length, 1);
+  assert.equal(ideas.length, 2);
+  const nes = ideaById(2);
+  assert.equal(nes.stage, "구상 중");
+  assert.equal(nes.title, "네스 캐릭터 굿즈 구상서");
+  assert.equal(ideaProgress(nes).percent, 15);
+  assert.equal(nes.checklist.filter((item) => item.done).length, 2);
+  assert.equal(JSON.stringify(nes).includes("19,900"), false);
+  assert.equal(nes.heroCaption, "AI 콘셉 이미지 · 실제 제작품 아님");
   const idea = ideaById(1);
   assert.equal(idea.title, "맞춤 머그컵 — 반려동물 사진 이름 머그컵 주문 제작");
   assert.equal(idea.brand, "쇼");

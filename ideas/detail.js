@@ -1,3 +1,4 @@
+import { mountComments } from "./comments.js";
 import { ideaById, ideaProgress } from "./data.js";
 
 const id = location.pathname.replace(/\/+$/, "").split("/").pop();
@@ -20,7 +21,7 @@ function render(item) {
   const hero = el("figure", { className: "hero" });
   const image = document.createElement("img");
   image.src = item.hero;
-  image.alt = "흰색 머그컵 디자인 시안";
+    image.alt = item.heroAlt || "흰색 머그컵 디자인 시안";
   hero.append(image, el("figcaption", { className: "caption", text: item.heroCaption }));
 
   const head = el("div");
@@ -32,10 +33,15 @@ function render(item) {
       el("span", { text: `진행률 ${progress.percent}%` }),
       el("time", { text: item.updated.replaceAll("-", ".") }),
     ]),
-    el("p", { className: "copy", text: "기획 초안입니다. 판매, 주문, 확정된 공급업체와 견적은 아직 없습니다. 금액은 계획용 가정입니다." }),
+    el("p", { className: "copy", text: item.disclaimer || "기획 초안입니다. 판매, 주문, 확정된 공급업체와 견적은 아직 없습니다. 금액은 계획용 가정입니다." }),
   );
 
   app.append(head, hero);
+  if (item.layout === "concept") {
+    renderConcept(item, progress);
+    finish(item);
+    return;
+  }
   app.append(prose("핵심 제안", item.pitch));
   app.append(tablePanel("상품 옵션 기준", "계획용 가정", item.offer));
   app.append(limits(item.limits));
@@ -57,7 +63,86 @@ function render(item) {
     el("p", { className: "kicker", text: "다음 할 일" }),
     el("h2", { text: item.next }),
   ]));
-  app.append(sources(item.sources));
+  if (item.sources) app.append(sources(item.sources));
+  finish(item);
+}
+
+function renderConcept(item, progress) {
+  app.append(prose("핵심 컨셉", item.pitch));
+  app.append(rules(item));
+  app.append(phrases(item));
+  app.append(prose("머그컵", item.mug));
+  app.append(prose("마우스패드", item.pad));
+  app.append(figure(item.images[0]));
+  app.append(stickers(item));
+  app.append(prose("세트 구성 아이디어", item.sets));
+  app.append(prose("키링", [item.keyringNote]));
+  app.append(keyrings(item.keyrings));
+  app.append(figure(item.images[1]));
+  app.append(prose("확장 계획", [item.later]));
+  app.append(checklist(item, progress));
+  app.append(el("section", { className: "panel next" }, [
+    el("p", { className: "kicker", text: "다음 할 일" }),
+    el("h2", { text: item.next }),
+  ]));
+}
+
+function rules(item) {
+  const list = el("ul");
+  for (const line of item.rules) list.append(el("li", { text: line }));
+  const colors = el("div", { className: "swatches" });
+  for (const color of item.swatches) {
+    const chip = el("span", { className: "swatch" });
+    const dot = el("i");
+    dot.style.background = color.hex;
+    chip.append(dot, document.createTextNode(color.name));
+    colors.append(chip);
+  }
+  return el("section", { className: "panel" }, [
+    el("h2", { text: "캐릭터 규칙" }),
+    el("p", { className: "caption", text: "문서에 적힌 색 이름입니다. 확정된 색 코드는 없습니다." }),
+    colors,
+    list,
+  ]);
+}
+
+function stickers(item) {
+  const list = el("ul");
+  for (const sticker of item.stickers) list.append(el("li", { text: `${sticker.name} · ${sticker.prop}` }));
+  return el("section", { className: "panel" }, [
+    el("h2", { text: "스티커 4종" }),
+    list,
+    el("p", { text: item.stickerNote }),
+  ]);
+}
+
+function keyrings(items) {
+  const wrap = el("div", { className: "keyrings" });
+  for (const kind of items) {
+    wrap.append(el("article", {}, [el("h3", { text: kind.title }), el("p", { text: kind.text })]));
+  }
+  return el("section", { className: "panel" }, [el("h2", { text: "키링 유형" }), wrap]);
+}
+
+function figure(shot) {
+  const box = document.createElement("figure");
+  box.className = "shot";
+  const image = document.createElement("img");
+  image.src = shot.src;
+  image.alt = shot.label;
+  image.loading = "lazy";
+  box.append(image, el("figcaption", { className: "caption", text: `${shot.label}. ${shot.caption}` }));
+  return box;
+}
+
+function phrases(item) {
+  const row = el("div", { className: "chips" });
+  for (const phrase of item.phrases) row.append(el("span", { text: phrase }));
+  return el("section", { className: "panel" }, [el("h2", { text: "문구 목록" }), row]);
+}
+
+function finish(item) {
+  mountComments(app, item.id);
   const lock = document.createElement("form");
   lock.method = "post";
   lock.action = "/ideas/lock";
@@ -155,7 +240,7 @@ function checklist(item, progress) {
     list.append(row);
   }
   return el("section", { className: "panel" }, [
-    el("h2", { text: "출시 전 체크리스트" }),
+    el("h2", { text: item.checklistTitle || "출시 전 체크리스트" }),
     el("p", { className: "caption", text: `${progress.done}/${progress.total} · ${progress.percent}%` }),
     list,
   ]);

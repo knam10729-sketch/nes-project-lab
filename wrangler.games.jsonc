@@ -12,10 +12,12 @@
   },
   "durable_objects": {
     "bindings": [
-      { "name": "GAME_ROOMS", "class_name": "GameRoom" }
+      { "name": "GAME_ROOMS", "class_name": "GameRoom" },
+      { "name": "IDEA_COMMENTS", "class_name": "IdeaComments" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
+    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["IdeaComments"] }
   ]
 }

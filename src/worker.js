@@ -1,3 +1,5 @@
+import { ideaById } from "../ideas/data.js";
+
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
 const PREFIX = "/calendar-app";
 const COOKIE_PREFIX = "nescal_";
@@ -25,13 +27,39 @@ async function handleIdeas(request, env, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/ideas";
   if (request.method === "POST" && path === "/ideas/unlock") return unlockIdeas(request, url);
   if ((request.method === "POST" || request.method === "GET") && path === "/ideas/lock") return lockIdeas();
+  const commentMatch = path.match(/^\/ideas\/api\/comments\/(\d+)(?:\/([A-Za-z0-9-]+))?$/);
+  if (commentMatch) return ideaComments(request, env, url, commentMatch[1], commentMatch[2] || "");
   if (!(await ideaCookieValid(request))) return ideaLocked(request, path);
   if (path === "/ideas") return privateAsset(request, env, "/ideas/index.html");
   if (/^\/ideas\/\d+$/.test(path)) return privateAsset(request, env, "/ideas/detail.html");
-  if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/ideas.css"].includes(path)) {
+  if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/comments.js", "/ideas/comment-text.js", "/ideas/ideas.css"].includes(path)) {
     return privateAsset(request, env);
   }
   return text("페이지를 찾을 수 없습니다.", 404);
+}
+
+async function ideaComments(request, env, url, ideaId, commentId) {
+  if (!(await ideaCookieValid(request))) {
+    return new Response(JSON.stringify({ error: "잠겨 있습니다." }), {
+      status: 401,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, no-store" },
+    });
+  }
+  if (!ideaById(ideaId)) return json({ error: "아이디어를 찾지 못했습니다." }, 404);
+  if (!env.IDEA_COMMENTS) return json({ error: "댓글 저장소가 아직 연결되지 않았습니다." }, 503);
+  if (request.method !== "GET" && crossSite(request, url)) return text("Forbidden", 403);
+  if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error: "요청을 찾을 수 없습니다." }, 405);
+  const headers = new Headers();
+  if (request.method !== "GET") headers.set("content-type", "application/json");
+  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "local";
+  headers.set("x-idea-ip", ip.split(",")[0].trim());
+  const stub = env.IDEA_COMMENTS.get(env.IDEA_COMMENTS.idFromName(`idea-${ideaId}`));
+  const target = commentId ? `/comments/${commentId}` : "/comments";
+  return stub.fetch(new Request(`https://comments.internal${target}`, {
+    method: request.method,
+    headers,
+    body: request.method === "POST" ? request.body : undefined,
+  }));
 }
 
 async function unlockIdeas(request, url) {
