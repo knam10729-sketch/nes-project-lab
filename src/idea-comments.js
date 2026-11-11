@@ -30,6 +30,8 @@ export class IdeaComments extends DurableObject {
   async fetch(request) {
     const url = new URL(request.url);
     try {
+      if (url.pathname === "/export" && request.method === "GET") return json({ comments: this.#rows() });
+      if (url.pathname === "/import" && request.method === "POST") return this.#importIfEmpty(request);
       if (request.method === "GET") return json({ comments: this.#list() });
       if (request.method === "POST") return this.#add(request);
       if (request.method === "DELETE") return await this.#remove(request, url.pathname.split("/").pop());
@@ -37,6 +39,29 @@ export class IdeaComments extends DurableObject {
     } catch {
       return json({ error: "댓글을 처리하지 못했습니다." }, 500);
     }
+  }
+
+  #rows() {
+    return this.ctx.storage.sql.exec(
+      "SELECT id, name, body, created_at, pass_salt, pass_hash FROM comments ORDER BY created_at ASC",
+    ).toArray();
+  }
+
+  #importIfEmpty(request) {
+    if (this.#rows().length) return json({ imported: 0 });
+    return request.json().then((payload) => {
+      const rows = Array.isArray(payload?.comments) ? payload.comments : [];
+      let imported = 0;
+      for (const row of rows) {
+        if (!row || typeof row.id !== "string" || !row.id || typeof row.name !== "string" || typeof row.body !== "string") continue;
+        this.ctx.storage.sql.exec(
+          "INSERT OR IGNORE INTO comments (id, name, body, created_at, pass_salt, pass_hash) VALUES (?, ?, ?, ?, ?, ?)",
+          row.id, row.name, row.body, Number(row.created_at) || Date.now(), row.pass_salt || null, row.pass_hash || null,
+        );
+        imported += 1;
+      }
+      return json({ imported });
+    }).catch(() => json({ imported: 0 }));
   }
 
   #list() {

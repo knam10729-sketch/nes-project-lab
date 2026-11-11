@@ -1,3 +1,4 @@
+import { commentsToImport } from "../ideas/comment-text.js";
 import { ideaById } from "../ideas/data.js";
 
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
@@ -45,21 +46,53 @@ async function ideaComments(request, env, url, ideaId, commentId) {
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, no-store" },
     });
   }
-  if (!ideaById(ideaId)) return json({ error: "아이디어를 찾지 못했습니다." }, 404);
+  const idea = ideaById(ideaId);
+  if (!idea) return json({ error: "아이디어를 찾지 못했습니다." }, 404);
   if (!env.IDEA_COMMENTS) return json({ error: "댓글 저장소가 아직 연결되지 않았습니다." }, 503);
   if (request.method !== "GET" && crossSite(request, url)) return text("Forbidden", 403);
   if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error: "요청을 찾을 수 없습니다." }, 405);
+  await migrateLegacyComments(env, idea);
   const headers = new Headers();
   if (request.method !== "GET") headers.set("content-type", "application/json");
   const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "local";
   headers.set("x-idea-ip", ip.split(",")[0].trim());
-  const stub = env.IDEA_COMMENTS.get(env.IDEA_COMMENTS.idFromName(`idea-${ideaId}`));
+  const stub = env.IDEA_COMMENTS.get(env.IDEA_COMMENTS.idFromName(`idea-${idea.slug}`));
   const target = commentId ? `/comments/${commentId}` : "/comments";
   return stub.fetch(new Request(`https://comments.internal${target}`, {
     method: request.method,
     headers,
     body: request.method === "GET" ? undefined : request.body,
   }));
+}
+
+function commentStore(env, name) {
+  return env.IDEA_COMMENTS.get(env.IDEA_COMMENTS.idFromName(`idea-${name}`));
+}
+
+async function readCommentExport(stub) {
+  const response = await stub.fetch(new Request("https://comments.internal/export"));
+  if (!response.ok) return [];
+  const data = await response.json().catch(() => ({}));
+  return Array.isArray(data.comments) ? data.comments : [];
+}
+
+async function migrateLegacyComments(env, idea) {
+  if (!idea.legacyId) return;
+  try {
+    const next = commentStore(env, idea.slug);
+    const current = await readCommentExport(next);
+    if (current.length) return;
+    const legacy = await readCommentExport(commentStore(env, idea.legacyId));
+    const rows = commentsToImport(current, legacy);
+    if (!rows.length) return;
+    await next.fetch(new Request("https://comments.internal/import", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ comments: rows }),
+    }));
+  } catch {
+    // An old numeric store that cannot be read should not block new comments.
+  }
 }
 
 async function unlockIdeas(request, url) {

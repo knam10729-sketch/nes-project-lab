@@ -47,6 +47,11 @@ function render(item) {
     finish(item);
     return;
   }
+  if (item.layout === "coffee") {
+    renderCoffee(item, progress);
+    finish(item);
+    return;
+  }
   app.append(prose("핵심 제안", item.pitch));
   app.append(tablePanel("상품 옵션 기준", "계획용 가정", item.offer));
   app.append(limits(item.limits));
@@ -70,6 +75,41 @@ function render(item) {
   ]));
   if (item.sources) app.append(sources(item.sources));
   finish(item);
+}
+
+function renderCoffee(item, progress) {
+  app.append(prose("핵심 컨셉", item.pitch));
+  app.append(prose("상품 모습", item.look));
+  app.append(prose("커피를 담는 방식", item.coating));
+  app.append(conceptShot(item.interior));
+  app.append(flow(item.flow, "사용 흐름", item.flowNote));
+  app.append(prose("포장·판매 모습", item.pack));
+  app.append(conceptShot(item.display));
+  app.append(prose("포갤 때 커피층 보호", item.stack));
+  app.append(sceneChips(item));
+  app.append(checklist(item, progress));
+  app.append(el("section", { className: "panel next" }, [
+    el("p", { className: "kicker", text: "다음 할 일" }),
+    el("h2", { text: item.next }),
+  ]));
+}
+
+function conceptShot(shot) {
+  return figure({
+    src: shot.src,
+    label: "콘셉 시안 · 실제 제작품·성능 검증 아님",
+    caption: shot.caption,
+  });
+}
+
+function sceneChips(item) {
+  const row = el("div", { className: "chips" });
+  for (const scene of item.scenes) row.append(el("span", { text: scene }));
+  return el("section", { className: "panel" }, [
+    el("h2", { text: "사용 장면" }),
+    el("p", { text: item.sceneNote }),
+    row,
+  ]);
 }
 
 function renderShops(item, progress) {
@@ -282,7 +322,7 @@ function gallery(item) {
 }
 
 function flow(steps, title = "주문에서 배송까지", note = "결제를 확인한 뒤 사진을 받고, 시안을 승인받은 뒤에만 제작한다. 답이 없으면 승인으로 보지 않는다.") {
-  const list = el("ol", { className: "flow" });
+  const list = el("ol", { className: steps.length === 3 ? "flow three" : "flow" });
   steps.forEach((label, index) => {
     const item = el("li");
     item.append(el("small", { text: String(index + 1).padStart(2, "0") }), document.createTextNode(label));

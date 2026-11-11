@@ -4,6 +4,12 @@ export const COMMENT_STORE_CAP = 100;
 export const BOARD_PASSWORD = "2002";
 const PASSWORD_ROUNDS = 20_000;
 
+export function commentsToImport(current, legacy) {
+  if (Array.isArray(current) && current.length) return [];
+  if (!Array.isArray(legacy)) return [];
+  return legacy.filter((row) => row && typeof row.id === "string" && row.id && typeof row.body === "string");
+}
+
 export function cleanComment(input) {
   const name = String(input?.name ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 20) || "익명";
   const text = String(input?.text ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 500);

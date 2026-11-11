@@ -5,8 +5,44 @@ import handler from "../src/worker.js";
 import { ideaById, ideaProgress, ideas } from "../ideas/data.js";
 
 test("the idea board has one planning item and the report numbers", () => {
-  assert.equal(ideas.length, 3);
-  const shop = ideaById(3);
+  assert.equal(ideas.length, 4);
+  assert.deepEqual(ideas.map((idea) => idea.slug), ["coffee-cup", "pet-mug", "nes-goods", "shop-design"]);
+  assert.deepEqual(ideas.map((idea) => idea.no), [1, 2, 3, 4]);
+  assert.deepEqual(ideas.map((idea) => [idea.id, idea.no]), ideas.map((idea, index) => [index + 1, index + 1]));
+  const coffee = ideaById(1);
+  assert.equal(coffee.slug, "coffee-cup");
+  assert.equal(ideaById("coffee-cup").id, 1);
+  assert.equal(coffee.stage, "구상 중");
+  assert.equal(coffee.layout, "coffee");
+  assert.equal(coffee.title, "커피 코팅 종이컵 제품 구상서");
+  assert.equal(coffee.legacyId, undefined);
+  assert.equal(ideaProgress(coffee).percent, 13);
+  assert.ok(ideaProgress(coffee).percent >= 10 && ideaProgress(coffee).percent <= 15);
+  assert.deepEqual(coffee.checklist.filter((item) => item.done).map((item) => item.label), ["구상서 정리", "콘셉 시안"]);
+  for (const label of ["코팅 가능성", "녹는 정도", "내수성·향", "운반 중 탈락", "방습 포장", "소비기한", "식품 접촉 안전성"]) {
+    assert.equal(coffee.checklist.find((item) => item.label === label).done, false);
+  }
+  assert.deepEqual(coffee.flow, ["컵 꺼내기", "선까지 뜨거운 물", "저어 마시기"]);
+  assert.deepEqual(coffee.scenes, ["사무실 탕비실", "캠핑", "여행"]);
+  assert.equal(coffee.heroCaption, "콘셉 시안 · 실제 제작품·성능 검증 아님");
+  assert.match(coffee.disclaimer, /습기 차단/);
+  assert.match(coffee.disclaimer, /목표 콘셉트/);
+  assert.match(coffee.pitch.join(" "), /컵 1개가 커피 1잔/);
+  assert.equal(/\d[\d,]*원/.test(JSON.stringify(coffee)), false);
+  assert.equal(JSON.stringify(coffee).includes("<form"), false);
+  for (const image of [coffee.hero, coffee.interior.src, coffee.display.src]) {
+    assert.equal(existsSync(new URL(`..${image}`, import.meta.url)), true);
+  }
+  const detail = readFileSync(new URL("../ideas/detail.js", import.meta.url), "utf8");
+  assert.match(detail, /layout === "coffee"/);
+  assert.match(detail, /layout === "shops"/);
+  assert.match(detail, /mountComments/);
+  const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
+  assert.match(workerSource, /idea-\$\{idea\.slug\}/);
+  assert.match(workerSource, /idea\.legacyId/);
+  const shop = ideaById(4);
+  assert.equal(shop.slug, "shop-design");
+  assert.equal(shop.legacyId, 3);
   assert.equal(shop.stage, "구상 중");
   assert.equal(shop.layout, "shops");
   assert.equal(shop.title, "소상공인 맞춤 디자인 구상서");
@@ -24,17 +60,18 @@ test("the idea board has one planning item and the report numbers", () => {
   for (const image of [shop.hero, ...shop.shops.map((item) => item.src)]) {
     assert.equal(existsSync(new URL(`..${image}`, import.meta.url)), true);
   }
-  const detail = readFileSync(new URL("../ideas/detail.js", import.meta.url), "utf8");
-  assert.match(detail, /layout === "shops"/);
-  assert.match(detail, /mountComments/);
-  const nes = ideaById(2);
+  const nes = ideaById(3);
+  assert.equal(nes.slug, "nes-goods");
+  assert.equal(nes.legacyId, 2);
   assert.equal(nes.stage, "구상 중");
   assert.equal(nes.title, "네스 캐릭터 굿즈 구상서");
   assert.equal(ideaProgress(nes).percent, 15);
   assert.equal(nes.checklist.filter((item) => item.done).length, 2);
   assert.equal(JSON.stringify(nes).includes("19,900"), false);
   assert.equal(nes.heroCaption, "AI 콘셉 이미지 · 실제 제작품 아님");
-  const idea = ideaById(1);
+  const idea = ideaById(2);
+  assert.equal(idea.slug, "pet-mug");
+  assert.equal(idea.legacyId, 1);
   assert.equal(idea.title, "맞춤 머그컵 — 반려동물 사진 이름 머그컵 주문 제작");
   assert.equal(idea.brand, "쇼");
   assert.equal(idea.stage, "기획 중");

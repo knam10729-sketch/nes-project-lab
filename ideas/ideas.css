@@ -63,4 +63,5 @@ th{color:var(--muted);font-weight:700;font-size:12px}
 .next{background:var(--surface);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface));border:1px solid var(--ink)}
 .sources{padding-left:1.2em}
 .sources a{text-decoration:underline;text-underline-offset:3px}
-@media(max-width:640px){.idea-row{grid-template-columns:88px 1fr}.idea-row img{width:88px;height:72px}.flow{grid-template-columns:1fr 1fr}.flow li:last-child{grid-column:1 / -1}}
+.flow.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:640px){.idea-row{grid-template-columns:88px 1fr}.idea-row img{width:88px;height:72px}.flow{grid-template-columns:1fr 1fr}.flow li:last-child{grid-column:1 / -1}.flow.three{grid-template-columns:1fr}.flow.three li:last-child{grid-column:auto}}

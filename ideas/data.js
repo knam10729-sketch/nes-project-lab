@@ -1,7 +1,83 @@
-export const ideas = [
+const drafts = [
   {
-    id: 1,
-    no: 1,
+    slug: "coffee-cup",
+    layout: "coffee",
+    title: "커피 코팅 종이컵 제품 구상서",
+    brand: "커피",
+    stage: "구상 중",
+    updated: "2026-11-11",
+    summary: "종이컵 안쪽 벽에 1잔 분량의 커피를 붙여 두고, 뜨거운 물을 부어 마시는 구상. 컵 1개가 커피 1잔.",
+    thumbnail: "/ideas/img/coffee-board.webp",
+    hero: "/ideas/img/coffee-board.webp",
+    heroAlt: "사용자가 제공한 커피 코팅 종이컵 제품 아이디어 보드",
+    heroCaption: "콘셉 시안 · 실제 제작품·성능 검증 아님",
+    disclaimer: "첨부 이미지의 “일반 종이컵과 동일한 사용감”, “습기 차단” 등은 목표 콘셉트로 해석한다. 실제 성능이나 유통 적합성이 확인되었다는 의미는 아니다. 가격·제조 방식·판매 일정은 정하지 않았다.",
+    pitch: [
+      "종이컵 안쪽 벽에 1잔 분량의 커피를 얇게 붙여 두고, 사용할 때 뜨거운 물을 부어 마시는 제품을 구상 중이다.",
+      "컵과 커피를 각각 준비하거나 스틱 봉지를 뜯는 과정을 줄이고, 종이컵 한 줄을 꺼내 쓰듯 커피를 준비하는 모습을 생각하고 있다.",
+      "“컵 1개가 커피 1잔”이라는 개념이 포장만 보아도 전달되도록 하고 싶다.",
+    ],
+    look: [
+      "겉으로는 익숙한 흰 종이컵이지만 안쪽에는 갈색 커피층이 보이는 형태다.",
+      "컵을 여러 개 포개 한 줄로 포장하고, 커피 판매대에서 묶음 단위로 판매하는 모습을 구상했다.",
+      "일반 종이컵처럼 보이지만 커피가 함께 들어 있어 보관 조건과 소비기한을 살펴야 하는 상품이라는 점이 특징이다.",
+      "그림의 10개입은 포장 구성을 보여주는 예시이며, 실제 수량·용량·소비기한은 정하지 않았다.",
+    ],
+    coating: [
+      "핵심은 바닥에 가루를 따로 넣기보다 컵 안쪽 벽에 얇게 붙여 두는 형태다.",
+      "커피층이 보이는 외관으로 일반 종이컵과 차이를 보여주고, 물을 부으면 커피층이 풀리며 한 잔이 되는 사용 경험을 구상하고 있다.",
+      "별도의 필터 없이 마시는 사용법을 생각하면, 기본 원료는 물에 녹는 인스턴트 커피를 후보로 두는 것이 적합하다.",
+      "그림의 갈색 입자는 코팅된 커피를 표현한 것으로, 분쇄 원두 가루 자체가 모두 물에 녹는다는 의미는 아니다.",
+      "실제 배합과 벽면에 붙이는 방법은 아직 정하지 않았다.",
+      "그림의 단면은 아이디어 설명용이며, 실제 컵 소재와 코팅 구조를 확정한 설계도는 아니다.",
+    ],
+    interior: {
+      src: "/ideas/img/coffee-cup.webp",
+      caption: "컵 내부와 커피층의 시각적 구상. 원본 보드의 해당 부분 확대",
+    },
+    flow: ["컵 꺼내기", "선까지 뜨거운 물", "저어 마시기"],
+    flowNote: "포장에서 컵을 한 개 꺼내고, 안내된 선까지 뜨거운 물을 부어 농도를 맞춘다. 필요하면 저어 마신다. 물의 양·온도·녹는 시간은 시제품을 확인한 뒤 정한다.",
+    pack: [
+      "종이컵을 여러 개 포갠 익숙한 형태를 유지하면서, 커피 제품으로 알아볼 수 있는 포장을 구상하고 있다.",
+      "컵 한 줄을 감싸는 겉포장에 제품명과 수량, 한 컵으로 한 잔을 준비한다는 설명을 넣는 구상이다.",
+      "개봉 전에는 습기를 막고, 개봉 후에는 남은 컵을 보관하기 편한 방식이 필요하다.",
+      "투명 포장은 모양을 보여주는 예시이며 실제 방습 성능을 확인한 재질은 아니다.",
+    ],
+    display: {
+      src: "/ideas/img/coffee-pack.webp",
+      caption: "밀봉 포장과 커피 매대 진열 구상. 원본 보드의 해당 부분 확대",
+    },
+    stack: [
+      "윗컵의 바깥면이 아랫컵의 커피층에 닿지 않도록 간격을 두는 구조를 생각하고 있다.",
+      "코팅 보호뿐 아니라 컵을 쉽게 분리할 수 있는지, 접촉 과정의 위생은 어떤지 함께 살펴야 한다.",
+      "필요하면 개별 밀봉 등 다른 포장 방식도 비교해 볼 수 있다.",
+    ],
+    scenes: ["사무실 탕비실", "캠핑", "여행"],
+    sceneNote: "사무실 탕비실·캠핑·여행처럼 컵과 커피를 함께 챙기는 상황에서 꺼내 쓰는 모습을 생각했다.",
+    checklistTitle: "확인이 필요한 것",
+    checklist: [
+      { label: "구상서 정리", done: true },
+      { label: "콘셉 시안", done: true },
+      { label: "코팅 가능성", done: false },
+      { label: "녹는 정도", done: false },
+      { label: "내수성·향", done: false },
+      { label: "운반 중 탈락", done: false },
+      { label: "방습 포장", done: false },
+      { label: "소비기한", done: false },
+      { label: "식품 접촉 안전성", done: false },
+      { label: "수량·용량", done: false },
+      { label: "배합과 부착", done: false },
+      { label: "물의 양·온도·시간", done: false },
+      { label: "포장 형태", done: false },
+      { label: "개봉 후 보관", done: false },
+      { label: "포갤 때 간격·분리·위생", done: false },
+      { label: "가격·제조·판매 일정", done: false },
+    ],
+    next: "커피 코팅이 가능한지와 뜨거운 물을 부었을 때의 맛·사용감을 먼저 확인한다.",
+  },
+  {
+    slug: "pet-mug",
+    legacyId: 1,
     title: "맞춤 머그컵 — 반려동물 사진 이름 머그컵 주문 제작",
     brand: "쇼",
     stage: "기획 중",
@@ -125,8 +201,8 @@ export const ideas = [
     ],
   },
   {
-    id: 2,
-    no: 2,
+    slug: "nes-goods",
+    legacyId: 2,
     layout: "concept",
     title: "네스 캐릭터 굿즈 구상서",
     brand: "네스",
@@ -208,8 +284,8 @@ export const ideas = [
     next: "키링에서 네스 얼굴이 작은 크기에도 보이는지, 이름 태그가 복잡해 보이지 않는지부터 살펴본다.",
   },
   {
-    id: 3,
-    no: 3,
+    slug: "shop-design",
+    legacyId: 3,
     layout: "shops",
     title: "소상공인 맞춤 디자인 구상서",
     brand: "맞춤",
@@ -314,8 +390,19 @@ export const ideas = [
   },
 ];
 
+export const ideas = drafts.map((idea, index) => ({
+  ...idea,
+  id: index + 1,
+  no: index + 1,
+}));
+
 export function ideaById(id) {
-  return ideas.find((idea) => idea.id === Number(id)) || null;
+  const key = String(id);
+  return ideas.find((idea) => idea.slug === key || String(idea.id) === key) || null;
+}
+
+export function ideaBySlug(slug) {
+  return ideas.find((idea) => idea.slug === slug) || null;
 }
 
 export function ideaProgress(idea) {

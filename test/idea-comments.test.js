@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { cleanComment, hashCommentPassword, passwordMatches, relativeTime } from "../ideas/comment-text.js";
+import { cleanComment, commentsToImport, hashCommentPassword, passwordMatches, relativeTime } from "../ideas/comment-text.js";
 
 test("comment text stays plain and time is shown in Seoul terms", async () => {
   const nasty = cleanComment({ name: "  <b>네스</b>  ", text: "<script>alert(1)</script>", password: "1234" });
@@ -20,6 +20,11 @@ test("comment text stays plain and time is shown in Seoul terms", async () => {
   assert.equal(await passwordMatches("2002", stored.salt, stored.hash), false);
   assert.equal(await passwordMatches("2002", null, null), true);
   assert.equal(await passwordMatches("1999", null, null), false);
+  const kept = { id: "new", body: "그대로" };
+  const old = { id: "old", body: "이전 번호" };
+  assert.deepEqual(commentsToImport([], [old]), [old]);
+  assert.deepEqual(commentsToImport([kept], [old]), []);
+  assert.deepEqual(commentsToImport([], [{ body: "아이디 없음" }]), []);
   assert.equal(relativeTime(Date.now() - 10_000), "방금");
   assert.equal(relativeTime(Date.now() - 5 * 60_000), "5분 전");
   const seoul = relativeTime(Date.parse("2026-11-10T00:00:00Z"), Date.parse("2026-11-11T12:00:00Z"));
@@ -58,6 +63,18 @@ test("comments can be posted, listed, and refused while locked", async () => {
     const saved = await created.json();
     assert.equal(saved.text, "<script>alert(1)</script>");
     assert.equal(saved.pass_hash, undefined);
+    const coffee = await worker.fetch(`${origin}/ideas/api/comments/1`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "커피", text: "컵 댓글", password: "1234" }),
+    });
+    assert.equal(coffee.status, 201);
+    const coffeeSaved = await coffee.json();
+    const onCoffee = await (await worker.fetch(`${origin}/ideas/api/comments/1`, { headers: { cookie } })).json();
+    const onMug = await (await worker.fetch(`${origin}/ideas/api/comments/2`, { headers: { cookie } })).json();
+    assert.equal(onCoffee.comments.some((comment) => comment.id === coffeeSaved.id), true);
+    assert.equal(onMug.comments.some((comment) => comment.id === coffeeSaved.id), false);
+    assert.equal(onMug.comments.some((comment) => comment.id === saved.id), true);
     const listed = await worker.fetch(`${origin}/ideas/api/comments/2`, { headers: { cookie } });
     const list = await listed.json();
     const ours = list.comments.find((comment) => comment.id === saved.id);
