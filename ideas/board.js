@@ -2,10 +2,16 @@ import { ideaProgress, ideas } from "./data.js";
 
 const app = document.getElementById("app");
 const intro = el("div");
+const lock = document.createElement("form");
+lock.method = "post";
+lock.action = "/ideas/lock";
+lock.className = "lock-form";
+lock.append(el("button", { type: "submit", text: "잠그기" }));
 intro.append(
   el("p", { className: "eyebrow", text: "PLANNING BOARD" }),
   el("h1", { text: "내 아이디어" }),
   el("p", { className: "copy", text: "사업 아이디어를 번호로 올려 두는 보드입니다. 판매나 주문이 열린 페이지가 아닙니다." }),
+  lock,
 );
 const list = el("div", { className: "board" });
 for (const idea of ideas) {

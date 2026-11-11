@@ -58,7 +58,12 @@ function render(item) {
     el("h2", { text: item.next }),
   ]));
   app.append(sources(item.sources));
-  app.append(el("p", {}, [el("a", { href: "/ideas", text: "← 아이디어 보드" })]));
+  const lock = document.createElement("form");
+  lock.method = "post";
+  lock.action = "/ideas/lock";
+  lock.className = "lock-form";
+  lock.append(el("button", { type: "submit", text: "잠그기" }));
+  app.append(lock, el("p", {}, [el("a", { href: "/ideas", text: "← 아이디어 보드" })]));
 }
 
 function prose(title, paragraphs) {

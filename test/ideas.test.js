@@ -22,24 +22,73 @@ test("the idea board has one planning item and the report numbers", () => {
   assert.equal(JSON.stringify(idea).includes("<form"), false);
 });
 
-test("idea pages are served by the site worker", async () => {
+function ideaEnv() {
   const seen = [];
-  const env = {
-    ASSETS: {
-      async fetch(request) {
-        seen.push(new URL(request.url).pathname);
-        return new Response("asset:" + new URL(request.url).pathname);
+  return {
+    seen,
+    env: {
+      ASSETS: {
+        async fetch(request) {
+          seen.push(new URL(request.url).pathname);
+          return new Response("asset:" + new URL(request.url).pathname, { headers: { "content-type": "text/plain" } });
+        },
       },
     },
   };
+}
+
+test("ideas stay locked until the password cookie is valid", async () => {
+  const { seen, env } = ideaEnv();
   const board = await handler.fetch(new Request("https://jeonghan.kr/ideas"), env);
+  const page = await board.text();
+  assert.equal(board.status, 200);
+  assert.match(board.headers.get("cache-control"), /private/);
+  assert.match(board.headers.get("cache-control"), /no-store/);
+  assert.match(page, /inputmode="numeric"/);
+  assert.match(page, /autofocus/);
+  assert.equal(page.includes("맞춤 머그컵"), false);
   const detail = await handler.fetch(new Request("https://jeonghan.kr/ideas/1"), env);
+  assert.match(await detail.text(), /비밀번호/);
   const data = await handler.fetch(new Request("https://jeonghan.kr/ideas/data.js"), env);
   const image = await handler.fetch(new Request("https://jeonghan.kr/ideas/img/mug-hero.webp"), env);
-  assert.equal(await board.text(), "asset:/ideas/index.html");
-  assert.equal(await detail.text(), "asset:/ideas/detail.html");
-  assert.equal(await data.text(), "asset:/ideas/data.js");
-  assert.equal(await image.text(), "asset:/ideas/img/mug-hero.webp");
-  assert.equal((await handler.fetch(new Request("https://jeonghan.kr/ideas/missing"), env)).status, 404);
-  assert.deepEqual(seen, ["/ideas/index.html", "/ideas/detail.html", "/ideas/data.js", "/ideas/img/mug-hero.webp"]);
+  assert.equal(data.status, 401);
+  assert.equal(image.status, 401);
+  assert.equal((await data.text()).includes("판매가"), false);
+  assert.equal(seen.length, 0);
+
+  const wrong = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
+    method: "POST",
+    headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
+    body: "password=1999&next=/ideas/1",
+  }), env);
+  const wrongPage = await wrong.text();
+  assert.equal(wrong.status, 401);
+  assert.match(wrongPage, /비밀번호가 틀렸어요/);
+  assert.match(wrongPage, /shake/);
+  assert.equal(wrong.headers.get("set-cookie"), null);
+
+  const opened = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
+    method: "POST",
+    headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
+    body: "password=2002&next=/ideas/1",
+  }), env);
+  assert.equal(opened.status, 302);
+  assert.equal(opened.headers.get("location"), "/ideas/1");
+  const cookie = opened.headers.get("set-cookie");
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Lax/);
+  assert.match(cookie, /Max-Age=2592000/);
+  const pair = cookie.split(";")[0];
+  const unlocked = await handler.fetch(new Request("https://jeonghan.kr/ideas/1", { headers: { cookie: pair } }), env);
+  const file = await handler.fetch(new Request("https://jeonghan.kr/ideas/data.js", { headers: { cookie: pair } }), env);
+  assert.equal(await unlocked.text(), "asset:/ideas/detail.html");
+  assert.equal(await file.text(), "asset:/ideas/data.js");
+  assert.match(unlocked.headers.get("cache-control"), /no-store/);
+  const locked = await handler.fetch(new Request("https://jeonghan.kr/ideas/lock", {
+    method: "POST",
+    headers: { origin: "https://jeonghan.kr", cookie: pair },
+  }), env);
+  assert.equal(locked.status, 302);
+  assert.match(locked.headers.get("set-cookie"), /Max-Age=0/);
 });
