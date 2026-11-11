@@ -1,10 +1,32 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import handler from "../src/worker.js";
 import { ideaById, ideaProgress, ideas } from "../ideas/data.js";
 
 test("the idea board has one planning item and the report numbers", () => {
-  assert.equal(ideas.length, 2);
+  assert.equal(ideas.length, 3);
+  const shop = ideaById(3);
+  assert.equal(shop.stage, "구상 중");
+  assert.equal(shop.layout, "shops");
+  assert.equal(shop.title, "소상공인 맞춤 디자인 구상서");
+  assert.equal(ideaProgress(shop).percent, 15);
+  assert.deepEqual(shop.checklist.filter((item) => item.done).map((item) => item.label), ["구상서 정리", "콘셉 이미지"]);
+  assert.equal(shop.shops.length, 3);
+  assert.deepEqual(shop.flow, ["자료 받기", "분위기 제안", "시안", "사장님 확인", "최종 파일"]);
+  assert.deepEqual(shop.palettes.map((palette) => palette.place), ["카페", "미용실", "숙소"]);
+  assert.deepEqual(shop.materials, ["상호와 로고", "매장 사진", "넣을 문구·메뉴·가격", "원하는 분위기", "안내물을 놓을 위치"]);
+  assert.match(shop.disclaimer, /가상 예시/);
+  assert.match(shop.disclaimer, /판매 확정안이 아니/);
+  assert.equal(shop.heroCaption, "AI 콘셉 이미지 · 가상 예시");
+  assert.equal(JSON.stringify(shop).includes("<form"), false);
+  assert.equal(/\d[\d,]*원/.test(JSON.stringify(shop)), false);
+  for (const image of [shop.hero, ...shop.shops.map((item) => item.src)]) {
+    assert.equal(existsSync(new URL(`..${image}`, import.meta.url)), true);
+  }
+  const detail = readFileSync(new URL("../ideas/detail.js", import.meta.url), "utf8");
+  assert.match(detail, /layout === "shops"/);
+  assert.match(detail, /mountComments/);
   const nes = ideaById(2);
   assert.equal(nes.stage, "구상 중");
   assert.equal(nes.title, "네스 캐릭터 굿즈 구상서");

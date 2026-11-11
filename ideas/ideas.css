@@ -2,11 +2,12 @@
 .lock-form{margin:14px 0 8px}
 .chips,.swatches{display:flex;flex-wrap:wrap;gap:8px}
 .chips span,.swatch{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-alt);font-weight:700}
-.swatch i{width:16px;height:16px;border-radius:50%;border:1px solid var(--line)}
+.swatch{width:max-content;flex:0 0 auto;white-space:nowrap}
+.swatch i{width:16px;height:16px;border-radius:50%;border:1px solid var(--line);flex:none}
 .shot{margin:12px 0}
 .shot img{width:100%;height:auto;border-radius:18px;display:block}
-.keyrings{display:grid;gap:12px}
-.keyrings h3{margin:0 0 6px;font-size:18px}
+.keyrings,.palettes{display:grid;gap:12px}
+.keyrings h3,.palette h3{margin:0 0 6px;font-size:18px}
 .comments{display:grid;gap:12px}
 .comments form{display:grid;gap:8px}
 .comments input,.comments textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;padding:12px}

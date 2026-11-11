@@ -42,6 +42,11 @@ function render(item) {
     finish(item);
     return;
   }
+  if (item.layout === "shops") {
+    renderShops(item, progress);
+    finish(item);
+    return;
+  }
   app.append(prose("핵심 제안", item.pitch));
   app.append(tablePanel("상품 옵션 기준", "계획용 가정", item.offer));
   app.append(limits(item.limits));
@@ -65,6 +70,75 @@ function render(item) {
   ]));
   if (item.sources) app.append(sources(item.sources));
   finish(item);
+}
+
+function renderShops(item, progress) {
+  app.append(prose("핵심 컨셉", item.pitch));
+  for (const shop of item.shops) app.append(shopSet(shop));
+  app.append(mood(item));
+  app.append(prose("매장 공지와 온라인 공지", item.notices));
+  app.append(extensions(item.extensions));
+  app.append(materials(item));
+  app.append(flow(item.flow, "작업 흐름", item.flowNote));
+  app.append(prose("검토 중인 것", item.review));
+  app.append(checklist(item, progress));
+  app.append(el("section", { className: "panel next" }, [
+    el("p", { className: "kicker", text: "다음 할 일" }),
+    el("h2", { text: item.next }),
+  ]));
+}
+
+function shopSet(shop) {
+  const list = el("ul");
+  for (const line of shop.points) list.append(el("li", { text: line }));
+  return el("section", { className: "panel" }, [
+    el("h2", { text: shop.title }),
+    figure({ src: shop.src, label: "AI 콘셉 이미지 · 가상 예시", caption: shop.caption }),
+    list,
+  ]);
+}
+
+function mood(item) {
+  const wrap = el("div", { className: "palettes" });
+  for (const palette of item.palettes) {
+    const colors = el("div", { className: "swatches" });
+    for (const color of palette.colors) {
+      const chip = el("span", { className: "swatch" });
+      const dot = el("i");
+      dot.style.background = color.hex;
+      chip.append(dot, document.createTextNode(color.name));
+      colors.append(chip);
+    }
+    wrap.append(el("div", { className: "palette" }, [el("h3", { text: palette.place }), colors]));
+  }
+  return el("section", { className: "panel" }, [
+    el("h2", { text: "가게마다 다른 분위기" }),
+    ...item.mood.map((text) => el("p", { text })),
+    el("p", { className: "caption", text: "예시 이미지에 쓰인 색 이름입니다. 확정된 색 코드는 없고, 달은 작은 달 모양입니다." }),
+    wrap,
+  ]);
+}
+
+function extensions(items) {
+  const wrap = el("div", { className: "keyrings" });
+  for (const kind of items) {
+    wrap.append(el("article", {}, [el("h3", { text: kind.title }), el("p", { text: kind.text })]));
+  }
+  return el("section", { className: "panel" }, [el("h2", { text: "다른 업종으로 확장" }), wrap]);
+}
+
+function materials(item) {
+  const list = el("ul", { className: "checks" });
+  for (const label of item.materials) {
+    const row = el("li");
+    row.append(el("span", { className: "box", text: "" }), el("span", { text: label }));
+    list.append(row);
+  }
+  return el("section", { className: "panel" }, [
+    el("h2", { text: "사장님에게 받을 자료" }),
+    el("p", { text: item.materialsNote }),
+    list,
+  ]);
 }
 
 function renderConcept(item, progress) {
@@ -207,7 +281,7 @@ function gallery(item) {
   ]);
 }
 
-function flow(steps) {
+function flow(steps, title = "주문에서 배송까지", note = "결제를 확인한 뒤 사진을 받고, 시안을 승인받은 뒤에만 제작한다. 답이 없으면 승인으로 보지 않는다.") {
   const list = el("ol", { className: "flow" });
   steps.forEach((label, index) => {
     const item = el("li");
@@ -215,8 +289,8 @@ function flow(steps) {
     list.append(item);
   });
   return el("section", { className: "panel" }, [
-    el("h2", { text: "주문에서 배송까지" }),
-    el("p", { text: "결제를 확인한 뒤 사진을 받고, 시안을 승인받은 뒤에만 제작한다. 답이 없으면 승인으로 보지 않는다." }),
+    el("h2", { text: title }),
+    el("p", { text: note }),
     list,
   ]);
 }
