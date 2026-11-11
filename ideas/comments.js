@@ -14,9 +14,16 @@ export function mountComments(parent, ideaId) {
   text.required = true;
   text.placeholder = "의견을 남겨 주세요";
   text.setAttribute("aria-label", "댓글");
+  const secret = document.createElement("input");
+  secret.type = "password";
+  secret.required = true;
+  secret.minLength = 4;
+  secret.maxLength = 20;
+  secret.placeholder = "비밀번호 (4–20자)";
+  secret.setAttribute("aria-label", "비밀번호");
   const button = el("button", { type: "submit", text: "등록" });
   const note = el("p", { className: "caption", id: "comment-note" });
-  form.append(name, text, button, note);
+  form.append(name, text, secret, button, note);
   const list = document.createElement("div");
   list.id = "comment-list";
   section.append(form, list);
@@ -28,7 +35,7 @@ export function mountComments(parent, ideaId) {
     const response = await fetch(`/ideas/api/comments/${ideaId}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: name.value, text: text.value }),
+      body: JSON.stringify({ name: name.value, text: text.value, password: secret.value }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -36,6 +43,7 @@ export function mountComments(parent, ideaId) {
       return;
     }
     text.value = "";
+    secret.value = "";
     note.textContent = "";
     await load();
   });
@@ -59,17 +67,46 @@ export function mountComments(parent, ideaId) {
     const body = document.createElement("p");
     body.textContent = comment.text;
     const remove = el("button", { type: "button", text: "삭제" });
-    remove.addEventListener("click", async () => {
-      if (!confirm("이 댓글을 지울까요?")) return;
-      const response = await fetch(`/ideas/api/comments/${ideaId}/${comment.id}`, { method: "DELETE" });
+    const prompt = document.createElement("form");
+    prompt.className = "delete-prompt";
+    prompt.hidden = true;
+    const pass = document.createElement("input");
+    pass.type = "password";
+    pass.required = true;
+    pass.minLength = 4;
+    pass.maxLength = 20;
+    pass.placeholder = "댓글 비밀번호";
+    pass.setAttribute("aria-label", "댓글 비밀번호");
+    const confirmDelete = el("button", { type: "submit", text: "확인" });
+    const cancel = el("button", { type: "button", text: "취소" });
+    const error = el("p", { className: "caption" });
+    prompt.append(pass, confirmDelete, cancel, error);
+    remove.addEventListener("click", () => {
+      prompt.hidden = false;
+      error.textContent = "";
+      pass.focus();
+    });
+    cancel.addEventListener("click", () => {
+      prompt.hidden = true;
+      pass.value = "";
+      error.textContent = "";
+    });
+    prompt.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const response = await fetch(`/ideas/api/comments/${ideaId}/${comment.id}`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: pass.value }),
+      });
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        note.textContent = "지우지 못했습니다.";
+        error.textContent = data.error || "지우지 못했습니다.";
         return;
       }
       await load();
     });
     head.append(remove);
-    card.append(head, body);
+    card.append(head, body, prompt);
     return card;
   }
 

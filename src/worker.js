@@ -58,7 +58,7 @@ async function ideaComments(request, env, url, ideaId, commentId) {
   return stub.fetch(new Request(`https://comments.internal${target}`, {
     method: request.method,
     headers,
-    body: request.method === "POST" ? request.body : undefined,
+    body: request.method === "GET" ? undefined : request.body,
   }));
 }
 
@@ -124,15 +124,21 @@ function ideaGate(next, wrong) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#080808">
+<meta name="theme-color" content="#ffffff">
 <title>아이디어 | 정한.kr</title>
-<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/games/games.css">
 <script src="/theme.js" defer></script>
 <style>
-.gate{display:grid;gap:12px;max-width:420px;margin-top:18px}
-.gate input{width:100%;box-sizing:border-box;min-height:64px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:32px;font-weight:800;letter-spacing:.28em;text-align:center}
+html,body{height:100%}
+body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+body > header{flex:none}
+.idea-wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;max-width:none;margin:0;padding:24px 18px;box-sizing:border-box}
+.gate{display:grid;gap:12px;width:min(100%,420px);margin:0 auto;padding:22px 18px;box-sizing:border-box;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:24px}
+.gate .eyebrow,.gate h1,.gate .copy{text-align:center}
+.gate h1{margin:8px 0}
+.gate input{width:100%;box-sizing:border-box;min-height:64px;border-radius:16px;border:1px solid var(--line);background:var(--page);color:var(--ink);font:inherit;font-size:32px;font-weight:800;letter-spacing:.2em;text-align:center}
 .gate button{min-height:52px;border:0;border-radius:14px;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:800;font-size:17px}
 .gate-error{margin:0;color:var(--ink);font-weight:800}
 .shake{animation:gate-shake .42s ease}
@@ -140,12 +146,12 @@ function ideaGate(next, wrong) {
 </style>
 </head>
 <body>
-<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/#calendar">공유 캘린더</a><a href="/ideas" aria-current="page">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="화이트 테마로 전환" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">화이트</span></button></nav></div></header>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/#calendar">공유 캘린더</a><a href="/ideas" aria-current="page">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
 <main class="idea-wrap">
+<form class="gate${wrong ? " shake" : ""}" method="post" action="/ideas/unlock">
 <p class="eyebrow">PRIVATE</p>
 <h1>아이디어</h1>
 <p class="copy">기획 보드는 비밀번호가 있어야 열립니다.</p>
-<form class="gate${wrong ? " shake" : ""}" method="post" action="/ideas/unlock">
 <input type="hidden" name="next" value="${back}">
 <label for="idea-pass">비밀번호</label>
 <input id="idea-pass" name="password" inputmode="numeric" autocomplete="off" autofocus enterkeyhint="go" pattern="[0-9]*" aria-label="비밀번호">
