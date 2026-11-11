@@ -5,9 +5,9 @@ import handler from "../src/worker.js";
 import { ideaById, ideaProgress, ideas } from "../ideas/data.js";
 
 test("the idea board has one planning item and the report numbers", () => {
-  assert.equal(ideas.length, 4);
-  assert.deepEqual(ideas.map((idea) => idea.slug), ["coffee-cup", "pet-mug", "nes-goods", "shop-design"]);
-  assert.deepEqual(ideas.map((idea) => idea.no), [1, 2, 3, 4]);
+  assert.equal(ideas.length, 5);
+  assert.deepEqual(ideas.map((idea) => idea.slug), ["coffee-cup", "pet-mug", "nes-goods", "shop-design", "flex-case"]);
+  assert.deepEqual(ideas.map((idea) => idea.no), [1, 2, 3, 4, 5]);
   assert.deepEqual(ideas.map((idea) => [idea.id, idea.no]), ideas.map((idea, index) => [index + 1, index + 1]));
   const coffee = ideaById(1);
   assert.equal(coffee.slug, "coffee-cup");
@@ -35,6 +35,26 @@ test("the idea board has one planning item and the report numbers", () => {
   }
   const detail = readFileSync(new URL("../ideas/detail.js", import.meta.url), "utf8");
   assert.match(detail, /layout === "coffee"/);
+  assert.match(detail, /layout === "flexcase"/);
+  const flex = ideaById(5);
+  assert.equal(flex.slug, "flex-case");
+  assert.equal(flex.legacyId, undefined);
+  assert.equal(flex.stage, "구상 중");
+  assert.equal(flex.title, "유동형 휴대폰 케이스 구상서");
+  assert.equal(ideaProgress(flex).percent, 13);
+  assert.deepEqual(flex.checklist.filter((item) => item.done).map((item) => item.label), ["구상서 정리", "콘셉 시안"]);
+  for (const label of ["조절 범위", "고정 방법", "반복 사용 헐거워짐", "렌즈 배열·돌출 대응", "버튼·단자·스피커 간섭", "낙하 보호", "패널 결합·무게·충전 영향"]) {
+    assert.equal(flex.checklist.find((item) => item.label === label).done, false);
+  }
+  assert.deepEqual(flex.parts.map((part) => part.title), ["상하좌우 크기 조절", "가변 카메라 개구부", "늘어나지 않는 아트 패널", "탄성 소재·모서리 완충"]);
+  assert.match(flex.waste.join(" "), /친환경 성능이 검증되었다는 의미로 사용하지 않는다/);
+  assert.match(flex.scope.join(" "), /접이식/);
+  assert.equal(flex.heroCaption, "콘셉 시안 · 실제 제작품·성능 검증 아님");
+  assert.match(flex.disclaimer, /가격·판매 일정은 정하지 않았다/);
+  assert.equal(/\d[\d,]*원/.test(JSON.stringify(flex)), false);
+  for (const image of [flex.hero, flex.structure.src, flex.compare.src]) {
+    assert.equal(existsSync(new URL(`..${image}`, import.meta.url)), true);
+  }
   assert.match(detail, /layout === "shops"/);
   assert.match(detail, /mountComments/);
   const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");

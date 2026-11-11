@@ -52,6 +52,11 @@ function render(item) {
     finish(item);
     return;
   }
+  if (item.layout === "flexcase") {
+    renderFlex(item, progress);
+    finish(item);
+    return;
+  }
   app.append(prose("핵심 제안", item.pitch));
   app.append(tablePanel("상품 옵션 기준", "계획용 가정", item.offer));
   app.append(limits(item.limits));
@@ -75,6 +80,29 @@ function render(item) {
   ]));
   if (item.sources) app.append(sources(item.sources));
   finish(item);
+}
+
+function renderFlex(item, progress) {
+  app.append(prose("핵심 컨셉", item.pitch));
+  app.append(prose("문제에서 출발한 아이디어", item.problem));
+  app.append(parts(item.parts));
+  app.append(conceptShot(item.structure));
+  app.append(prose("자원 낭비를 줄이는 취지", item.waste));
+  app.append(conceptShot(item.compare));
+  app.append(checklist(item, progress));
+  app.append(prose("범위 노트", item.scope));
+  app.append(el("section", { className: "panel next" }, [
+    el("p", { className: "kicker", text: "다음 할 일" }),
+    el("h2", { text: item.next }),
+  ]));
+}
+
+function parts(items) {
+  const wrap = el("div", { className: "keyrings" });
+  for (const part of items) {
+    wrap.append(el("article", {}, [el("h3", { text: part.title }), el("p", { text: part.text })]));
+  }
+  return el("section", { className: "panel" }, [el("h2", { text: "크기는 바꾸고 그림은 유지하는 구조" }), wrap]);
 }
 
 function renderCoffee(item, progress) {
