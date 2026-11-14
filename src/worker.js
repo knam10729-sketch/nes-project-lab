@@ -4,7 +4,7 @@ import { ideaById } from "../ideas/data.js";
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
 const PREFIX = "/calendar-app";
 const COOKIE_PREFIX = "nescal_";
-const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet"]);
+const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet", "mafia"]);
 const ROOM = /^[a-z2-9]{8}$/;
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -266,11 +266,11 @@ async function handleGames(request, env, url) {
   if (/^\/games\/meet\/[a-z2-9]{8}\/?$/.test(path)) return serve(request, env, "/games/meet.html");
   if (path.startsWith("/games/vendor/leaflet/")) return env.ASSETS.fetch(request);
   if ([
-    "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/mole-view.js",
+    "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/fit.js", "/games/mole-view.js",
     "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/locate.js", "/games/map-view.js",
     "/games/neighborhoods.js", "/games/fortune-text.js", "/games/vendor/qrcode.js", "/games/games.css",
   ].includes(path)) return env.ASSETS.fetch(request);
-  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw)(?:\/([a-z2-9]{8}))?\/?$/);
+  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw|mafia)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);
 }

@@ -1,3 +1,4 @@
+import { lockPlay } from "./fit.js";
 import { distanceMeters, formatMeters, nearestPlace, placeLabel, placeLinks, sphericalMidpoint } from "./geo.js";
 import { locate } from "./locate.js";
 import { drawMarkers, ensureMap, onMapPick } from "./map-view.js";
@@ -27,6 +28,7 @@ else if (savedSeat.token) enterRoom(savedSeat.name || savedName || "손님", sav
 else mountJoin();
 
 function mountLobby() {
+  lockPlay(false);
   const form = el("form", { className: "setup" });
   const input = el("input", { id: "nickname" });
   input.maxLength = 12;
@@ -67,6 +69,7 @@ function mountLobby() {
 }
 
 function mountJoin() {
+  lockPlay(false);
   const form = el("form", { className: "setup" });
   const input = el("input", { id: "nickname" });
   input.maxLength = 12;
@@ -104,6 +107,7 @@ async function enterRoom(name, token) {
 }
 
 function mountRoom(token) {
+  lockPlay(true);
   app.replaceChildren(
     el("p", { className: "eyebrow", text: "만남 중간지점 · 2–10명" }),
     el("h1", { text: "중간에서 만나요" }),
@@ -140,6 +144,7 @@ function mountRoom(token) {
 }
 
 function mountSolo() {
+  lockPlay(true);
   soloPoints = [];
   app.replaceChildren(
     el("p", { className: "eyebrow", text: "만남 중간지점 · 혼자 계산" }),

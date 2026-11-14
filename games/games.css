@@ -30,11 +30,15 @@ h2{font-size:clamp(26px,5vw,40px);letter-spacing:-.05em;margin:8px 0 12px}
 .players{display:flex;gap:8px;flex-wrap:wrap;list-style:none;margin:8px 0 0;padding:0}
 .players li{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
 .players li.me{border-color:var(--ink)}
+.players li.out{opacity:.45;text-decoration:line-through}
 .players i{width:8px;height:8px;border-radius:50%;background:#888}
 .players i.on{background:#22a06b}
 .share{display:flex;gap:8px;margin:0 0 14px}
 .share input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink);border-radius:12px;padding:12px}
-.share button,.actions button,.primary,.ghost{border-radius:12px;padding:12px 14px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink);font-weight:800;cursor:pointer}
+.mafia-log{display:grid;gap:8px;margin:12px 0;padding:0}
+.mafia-log li{list-style:none;background:var(--surface-alt);border-radius:12px;padding:10px 12px;line-height:1.5}
+.secret-card h2{margin:6px 0}
+.share button,.actions button,.primary,.ghost{border-radius:12px;padding:12px 14px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink);font-weight:800;cursor:pointer;min-height:44px}
 .primary,.actions .primary,.setup .primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .note{min-height:1.4em;color:var(--muted)}
@@ -203,3 +207,32 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 28px}
 .pin-tip{background:#fff;color:#111;border:0;border-radius:999px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .leaflet-control-attribution{font-size:11px;max-width:72%}
 @media(max-width:540px){.nav{align-items:stretch}.nav nav{justify-content:flex-start}.share{flex-direction:column}.promote{grid-template-columns:1fr 1fr}.score-num{font-size:60px}.actions a.primary,.actions button{flex:1 1 100%}}
+html.game-lock,html.game-lock body{height:var(--play-height,100dvh);max-height:var(--play-height,100dvh);overflow:hidden;overscroll-behavior:none}
+html.game-lock body{position:fixed;top:var(--play-top,0);left:0;width:100%;display:flex;flex-direction:column;touch-action:manipulation}
+html.game-lock header{flex:none}
+html.game-lock header .nav{padding:8px 12px}
+html.game-lock header nav,html.game-lock footer,.game-lock .share,.game-lock .qr-card{display:none}
+html.game-lock main.wrap{flex:1;min-height:0;width:100%;max-width:980px;margin:0 auto;padding:6px 12px calc(8px + env(safe-area-inset-bottom));overflow:hidden;display:flex;flex-direction:column;gap:6px;touch-action:manipulation}
+html.game-lock h1{font-size:clamp(22px,6vw,32px);margin:2px 0}
+html.game-lock .hud{margin:0;flex:none;gap:4px}
+html.game-lock .turn{font-size:clamp(16px,4.2vw,22px)}
+html.game-lock .players{margin:4px 0 0;gap:4px}
+html.game-lock .players li{padding:2px 8px;font-size:12px}
+html.game-lock .clock,.game-lock .note{margin:0;flex:none}
+html.game-lock .note{min-height:0}
+html.game-lock .board-wrap{flex:1 1 auto;min-height:0;width:100%;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;container-type:size;touch-action:none}
+html.game-lock .gomoku,html.game-lock .chess{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-width:100%;max-height:100%}
+html.game-lock .janggi{aspect-ratio:8/9;width:min(100cqw,calc(100cqh * 8 / 9));height:auto;max-height:100%}
+html.game-lock .moles{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-height:100%;gap:6px}
+html.game-lock .yut-board{width:min(100cqw,100cqh);height:min(100cqw,100cqh);margin:0}
+html.game-lock #draw-canvas{width:min(100cqw,calc(100cqh * 10 / 7));height:auto;max-height:100%;margin:0;touch-action:none}
+html.game-lock .secret-card{flex:none;width:100%;padding:10px 12px}
+html.game-lock .secret-card h2{font-size:22px;margin:2px 0}
+html.game-lock .secret-card p{margin:4px 0;font-size:14px;line-height:1.4}
+html.game-lock .chat,html.game-lock .mafia-log,html.game-lock #people,html.game-lock #fortune{flex:1 1 auto;min-height:0;width:100%;overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+html.game-lock .actions{flex:none;margin:0;max-height:36%;overflow:auto;overscroll-behavior:contain;touch-action:manipulation}
+html.game-lock .actions button{min-height:40px;padding:8px 10px;flex:1 1 calc(50% - 8px)}
+html.game-lock input,html.game-lock textarea,html.game-lock select{font-size:16px;touch-action:manipulation}
+html.game-lock .map-frame{flex:1 1 auto;min-height:0;height:auto;width:100%;touch-action:pan-x pan-y}
+html.game-lock .map-credit{font-size:11px;margin:0}
+.chat,.mafia-log,.actions,#people,#fortune,.map-frame{overscroll-behavior:contain}

@@ -1,3 +1,4 @@
+import { lockPlay } from "./fit.js";
 import { fortuneFor, pickPlace, seoulDate, shareText } from "./geo.js";
 import { locate } from "./locate.js";
 import { ensureMap, onMapPick, showPlace } from "./map-view.js";
@@ -17,6 +18,7 @@ let result = null;
 mount();
 
 function mount() {
+  lockPlay(true);
   app.replaceChildren(
     el("p", { className: "eyebrow", text: "오늘 · 이 동네" }),
     el("h1", { text: "오늘의 위치 운세" }),

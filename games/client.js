@@ -1,8 +1,9 @@
+import { lockPlay, playLocked } from "./fit.js";
 import { BONK_MS, dropLocalPops, labelForHole, noteLatest, pinLocalPop, whackKey } from "./mole-view.js";
 import { applyInk, partyTurn, remember, renderParty } from "./party.js";
 import { drawQr } from "./qr.js";
 
-const PARTY = new Set(["yut", "liar", "draw"]);
+const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
 const META = {
   gomoku: ["오목", "15줄 판에서 번갈아 둡니다. 가로, 세로, 대각선으로 다섯 칸 이상 이어지면 이깁니다."],
   chess: ["체스", "캐슬링, 앙파상, 프로모션, 체크, 체크메이트, 스테일메이트까지 정식 규칙으로 둡니다."],
@@ -11,6 +12,7 @@ const META = {
   yut: ["윷놀이", "2명에서 4명. 윷을 던져 말을 움직이고, 업기, 잡기, 지름길을 서버가 판정합니다."],
   liar: ["라이어 게임", "3명에서 5명. 한 사람만 단어를 모릅니다. 힌트를 주고 라이어를 찾으세요."],
   draw: ["그림 맞히기", "2명에서 5명이 번갈아 그립니다. 먼저, 그리고 빠르게 맞힐수록 점수가 오릅니다."],
+  mafia: ["마피아", "4명에서 10명. 밤에는 역할을 숨기고, 낮에는 이야기한 뒤 투표합니다. 역할은 서버만 알고 있습니다."],
 };
 
 const REASONS = {
@@ -135,7 +137,8 @@ function mountSetup() {
       solo.disabled = false;
     }
   });
-  form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
+  if (game === "mafia") form.append(label, input, button, el("p", { className: "copy", text: "4명 이상이 링크로 들어온 뒤 방장이 시작합니다. 같은 자리에 모여 낮에는 소리 내어 이야기하세요." }), note);
+  else form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     button.disabled = true;
@@ -293,13 +296,14 @@ function connect() {
 
 function render(state) {
   latest = state;
+  lockPlay(playLocked(state.status));
   remember(state, mySeat);
   skew = state.now - Date.now();
   if (state.turnSeat !== mySeat) {
     selected = null;
     document.getElementById("promote")?.remove();
   }
-  if (state.position?.phase !== "playing") syncedEnd = false;
+  if (state.game === "mole" && state.position?.phase !== "playing") syncedEnd = false;
   const hud = document.getElementById("hud");
   hud.replaceChildren(
     el("div", {}, [
@@ -311,6 +315,7 @@ function render(state) {
   state.seats.forEach((seat, index) => {
     const item = el("li", { className: index === mySeat ? "me" : "" });
     if (index === state.turnSeat) item.classList.add("current");
+    if (state.game === "mafia" && state.position.alive && state.position.alive[index] === false) item.classList.add("out");
     const dot = el("i");
     dot.className = seat.connected ? "on" : "off";
     const score = state.game === "mole" ? ` ${state.position.scores?.[index] ?? 0}점` : "";
@@ -599,6 +604,21 @@ function tickClock() {
     if (state.position.phase === "playing" && left < -200 && !syncedEnd) {
       syncedEnd = true;
       send({ type: "sync" });
+    }
+  }
+  if (state?.game === "mafia" && bar) {
+    const clock = document.getElementById("clock");
+    const playing = state.status === "playing" && state.position.endsAt;
+    if (clock) clock.hidden = !playing;
+    if (playing) {
+      const left = state.position.endsAt - serverNow();
+      bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 45000))) * 100}%`;
+      const turn = document.getElementById("turn");
+      if (turn) turn.textContent = `${partyTurn(state, mySeat, secret)} · ${Math.max(0, Math.ceil(left / 1000))}초`;
+      if (left < -200 && syncedEnd !== state.position.endsAt) {
+        syncedEnd = state.position.endsAt;
+        send({ type: "sync" });
+      }
     }
   }
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
