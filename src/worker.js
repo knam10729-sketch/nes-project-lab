@@ -11,6 +11,8 @@ const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/guestbook" || url.pathname.startsWith("/guestbook/")) return handleGuestbook(request, env, url);
+    if (url.pathname === "/utils" || url.pathname === "/utils/") return serve(request, env, "/utils/index.html");
     if (url.pathname === "/ideas" || url.pathname.startsWith("/ideas/")) return handleIdeas(request, env, url);
     if (url.pathname === "/games" || url.pathname.startsWith("/games/") || url.pathname.startsWith("/play-api/")) {
       return handleGames(request, env, url);
@@ -23,6 +25,90 @@ const IDEA_PASSWORD = "2002";
 const IDEA_COOKIE = "nes-ideas";
 const IDEA_SECRET = "jeonghan.kr ideas gate v1";
 const IDEA_MAX_AGE = 60 * 60 * 24 * 30;
+
+const GUEST_COOKIE = "nes-guest-admin";
+const GUEST_SECRET = "jeonghan.kr guestbook admin v1";
+
+async function handleGuestbook(request, env, url) {
+  const path = url.pathname.replace(/\/+$/, "") || "/guestbook";
+  if (request.method === "POST" && path === "/guestbook/unlock") return unlockGuest(request, url);
+  if ((request.method === "POST" || request.method === "GET") && path === "/guestbook/lock") return lockGuest();
+  if (path === "/guestbook") return serve(request, env, "/guestbook/index.html");
+  if (path === "/guestbook/guestbook.js") return env.ASSETS.fetch(request);
+  const match = path.match(/^\/guestbook\/api\/entries(?:\/([A-Za-z0-9-]+))?$/);
+  if (!match) return text("페이지를 찾을 수 없습니다.", 404);
+  return guestEntries(request, env, url, match[1] || "");
+}
+
+async function guestEntries(request, env, url, id) {
+  if (!env.GUESTBOOK) return json({ error: "방명록 저장소가 아직 연결되지 않았습니다." }, 503);
+  const admin = await guestCookieValid(request);
+  if (request.method !== "GET" && crossSite(request, url)) return text("Forbidden", 403);
+  if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error: "요청을 찾을 수 없습니다." }, 405);
+  if (request.method === "DELETE" && !admin) return json({ error: "관리자만 지울 수 있습니다." }, 401);
+  const headers = new Headers();
+  if (request.method !== "GET") headers.set("content-type", "application/json");
+  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "local";
+  headers.set("x-idea-ip", ip.split(",")[0].trim());
+  const stub = env.GUESTBOOK.get(env.GUESTBOOK.idFromName("guestbook"));
+  const query = admin ? "?admin=1" : "";
+  const target = id ? `/entries/${id}${query}` : `/entries${query}`;
+  const response = await stub.fetch(new Request(`https://guestbook.internal${target}`, {
+    method: request.method,
+    headers,
+    body: request.method === "GET" ? undefined : request.body,
+  }));
+  if (request.method !== "GET") return response;
+  const data = await response.json();
+  return json({ entries: data.entries || [], admin });
+}
+
+async function unlockGuest(request, url) {
+  if (crossSite(request, url)) return text("Forbidden", 403);
+  let password = "";
+  try {
+    const body = await request.formData();
+    password = String(body.get("password") || "");
+  } catch {
+    password = "";
+  }
+  if (!sameText(password, IDEA_PASSWORD)) {
+    return new Response(null, { status: 401, headers: { location: "/guestbook?admin=0", "cache-control": "private, no-store" } });
+  }
+  const exp = Math.floor(Date.now() / 1000) + IDEA_MAX_AGE;
+  const sig = await guestSign(`guest:${exp}`);
+  const headers = new Headers({ location: "/guestbook", "cache-control": "private, no-store" });
+  headers.append("set-cookie", `${GUEST_COOKIE}=${exp}.${sig}; HttpOnly; Secure; SameSite=Lax; Path=/guestbook; Max-Age=${IDEA_MAX_AGE}`);
+  return new Response(null, { status: 302, headers });
+}
+
+function lockGuest() {
+  const headers = new Headers({ location: "/guestbook", "cache-control": "private, no-store" });
+  headers.append("set-cookie", `${GUEST_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/guestbook; Max-Age=0`);
+  return new Response(null, { status: 302, headers });
+}
+
+async function guestCookieValid(request) {
+  const raw = readCookie(request.headers.get("cookie"), GUEST_COOKIE);
+  const match = /^(\d+)\.([a-f0-9]{64})$/.exec(raw);
+  if (!match) return false;
+  const exp = Number(match[1]);
+  if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
+  const expected = await guestSign(`guest:${exp}`);
+  return sameText(expected, match[2]);
+}
+
+async function guestSign(payload) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(GUEST_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const bits = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return [...new Uint8Array(bits)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
 
 async function handleIdeas(request, env, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/ideas";
@@ -179,7 +265,7 @@ body > header{flex:none}
 </style>
 </head>
 <body>
-<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/#calendar">공유 캘린더</a><a href="/ideas" aria-current="page">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils">유틸리티</a><a href="/guestbook">방명록</a><a href="/ideas" aria-current="page">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
 <main class="idea-wrap">
 <form class="gate${wrong ? " shake" : ""}" method="post" action="/ideas/unlock">
 <p class="eyebrow">PRIVATE</p>
@@ -264,7 +350,7 @@ async function handleGames(request, env, url) {
   if (path === "/games/fortune" || path === "/games/fortune/") return serve(request, env, "/games/fortune.html");
   if (path === "/games/meet" || path === "/games/meet/") return serve(request, env, "/games/meet.html");
   if (/^\/games\/meet\/[a-z2-9]{8}\/?$/.test(path)) return serve(request, env, "/games/meet.html");
-  if (path.startsWith("/games/vendor/leaflet/")) return env.ASSETS.fetch(request);
+  if (path.startsWith("/games/vendor/leaflet/") || path.startsWith("/games/pieces/")) return env.ASSETS.fetch(request);
   if ([
     "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/fit.js", "/games/mole-view.js",
     "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/locate.js", "/games/map-view.js",

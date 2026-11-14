@@ -442,12 +442,21 @@ function drawTimes(state, mySeat, send) {
 }
 
 function lineBox(label, id, onSend, draft = "") {
-  const form = el("form", { className: "share" });
+  const form = el("form", { className: "line-form" });
   const input = el("input", { id: "line" });
   input.maxLength = 40;
   input.placeholder = label;
   input.value = draft;
+  input.enterKeyHint = "send";
   input.setAttribute("aria-label", label);
+  input.addEventListener("focus", () => {
+    const view = window.visualViewport;
+    if (view) {
+      document.documentElement.style.setProperty("--play-height", `${Math.round(view.height)}px`);
+      document.documentElement.style.setProperty("--play-top", `${Math.round(view.offsetTop)}px`);
+    }
+    setTimeout(() => input.scrollIntoView({ block: "nearest" }), 60);
+  });
   const button = el("button", { id, type: "submit", className: "primary", text: label });
   form.append(input, button);
   form.addEventListener("submit", (event) => {

@@ -14,8 +14,11 @@ test("the play screen locks only while a game is running", () => {
   const client = readFileSync(new URL("../games/client.js", import.meta.url), "utf8");
   assert.match(client, /lockPlay\(playLocked\(state\.status\)\)/);
   const meet = readFileSync(new URL("../games/meet.js", import.meta.url), "utf8");
-  assert.match(meet, /lockPlay\(true\)/);
-  assert.match(meet, /lockPlay\(false\)/);
+  assert.equal(meet.includes("lockPlay"), false);
   const fortune = readFileSync(new URL("../games/fortune.js", import.meta.url), "utf8");
-  assert.match(fortune, /lockPlay\(true\)/);
+  assert.equal(fortune.includes("lockPlay"), false);
+  assert.match(fortune, /scrollIntoView/);
+  const party = readFileSync(new URL("../games/party.js", import.meta.url), "utf8");
+  assert.match(party, /className: "line-form"/);
+  assert.equal(party.includes('className: "share"'), false);
 });

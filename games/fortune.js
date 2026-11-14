@@ -1,4 +1,3 @@
-import { lockPlay } from "./fit.js";
 import { fortuneFor, pickPlace, seoulDate, shareText } from "./geo.js";
 import { locate } from "./locate.js";
 import { ensureMap, onMapPick, showPlace } from "./map-view.js";
@@ -18,7 +17,6 @@ let result = null;
 mount();
 
 function mount() {
-  lockPlay(true);
   app.replaceChildren(
     el("p", { className: "eyebrow", text: "오늘 · 이 동네" }),
     el("h1", { text: "오늘의 위치 운세" }),
@@ -102,6 +100,7 @@ function showResult(point, mode) {
   box.replaceChildren(hero, grid, chips, mission, caution, word, el("div", { className: "fortune-actions" }, [
     button("운세 공유", "primary", share),
   ]));
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
   const mapNote = showPlace(document.getElementById("map"), result.place, result.placeLabel);
   if (!mapNote.ok) setNote(mapNote.error);
   else setNote(mode === "random" ? `${headline}입니다.` : "");

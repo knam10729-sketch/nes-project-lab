@@ -13,11 +13,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "GAME_ROOMS", "class_name": "GameRoom" },
-      { "name": "IDEA_COMMENTS", "class_name": "IdeaComments" }
+      { "name": "IDEA_COMMENTS", "class_name": "IdeaComments" },
+      { "name": "GUESTBOOK", "class_name": "Guestbook" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["IdeaComments"] }
+    { "tag": "v2", "new_sqlite_classes": ["IdeaComments"] },
+    { "tag": "v3", "new_sqlite_classes": ["Guestbook"] }
   ]
 }

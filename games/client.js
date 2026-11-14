@@ -421,7 +421,12 @@ function chessBoard(state, flip) {
       const piece = state.position.board[index];
       if (piece) {
         button.classList.add(piece === piece.toUpperCase() ? "w" : "b");
-        button.append(el("span", { className: "upright", text: CHESS_LETTER[piece.toLowerCase()] }));
+        const art = el("div", { className: "piece-art" });
+        const img = document.createElement("img");
+        img.src = `/games/pieces/${piece === piece.toUpperCase() ? "w" : "b"}${piece.toLowerCase()}.svg`;
+        img.alt = "";
+        art.append(img, el("small", { text: CHESS_LETTER[piece.toLowerCase()] }));
+        button.append(art);
       }
       if (state.position.last?.includes(name)) button.classList.add("last");
       if (selected === name || isLegalChess(state, name)) button.classList.add("mark");

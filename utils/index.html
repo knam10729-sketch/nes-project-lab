@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>유틸리티 | 정한.kr</title>
+<meta name="description" content="공유 달력, 중간 위치, 오늘의 위치 운세">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
+<link rel="stylesheet" href="/theme.css?v=20261111-yt">
+<link rel="stylesheet" href="/games/games.css">
+<script src="/theme.js" defer></script>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils" aria-current="page">유틸리티</a><a href="/guestbook">방명록</a><a href="/ideas">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
+<main class="wrap">
+<p class="eyebrow">TOOLS</p>
+<h1>유틸리티</h1>
+<p class="lead">같이 쓰는 달력, 만나는 곳, 오늘 이 근처의 재미 운세입니다.</p>
+<div class="cards">
+<a class="card" href="/calendar-app/"><p class="eyebrow">달력</p><h3>공유 달력</h3><p>로그인 후 공유 코드로 일정을 같이 적습니다.</p><span class="go">달력 열기 →</span></a>
+<a class="card" href="/games/meet"><p class="eyebrow">지도</p><h3>중간 위치 찾기</h3><p>서로의 위치를 공유하면 한가운데를 지도에 보여 줍니다. 위치는 저장하지 않습니다.</p><span class="go">중간 찾기 →</span></a>
+<a class="card" href="/games/fortune"><p class="eyebrow">재미용</p><h3>오늘의 위치 운세</h3><p>오늘 이 근처의 금전, 연애, 건강과 행운의 방향을 봅니다.</p><span class="go">운세 보기 →</span></a>
+</div>
+</main>
+<footer class="wrap">© <span id="year"></span> 정한.kr <a class="yt-foot" href="https://www.youtube.com/@neszal" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.8 15.5v-7l6.2 3.5-6.2 3.5z"/></svg>유튜브 @neszal</a></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>
