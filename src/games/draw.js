@@ -1,7 +1,7 @@
 import { choseong, drawWord, DRAW_WORDS } from "./words.js";
 
 export const ROUND_MS = 80_000;
-export const HINT_MS = 40_000;
+export const DRAW_TIMES = [40_000, 60_000, 80_000, 100_000, 120_000];
 const COLORS = new Set(["#171717", "#f4f1ea", "#c4554a", "#d38b2c", "#2f7d4a", "#2a6f97", "#6b4c9a", "#8a5a44"]);
 
 export function initialState() {
@@ -32,6 +32,7 @@ export function begin(state, playerCount, wordIndex, now, options = {}) {
     scores: Array(count).fill(0),
     playerCount: count,
     totalRounds: options.rounds || count,
+    roundMs: DRAW_TIMES.includes(options.durationMs) ? options.durationMs : ROUND_MS,
     soloGuess: Boolean(options.soloGuess),
     botDrawer: options.botDrawer ?? 0,
     pack: options.pack || null,
@@ -109,7 +110,7 @@ export function publicView(state) {
     startedAt: state.startedAt,
     hintAt: state.hintAt,
     endsAt: state.endsAt,
-    duration: ROUND_MS,
+    duration: state.roundMs || ROUND_MS,
     strokes: state.strokes,
     solved: state.solved,
     scores: state.scores,
@@ -139,6 +140,7 @@ export function wordCount() {
 function openRound(state, round, wordIndex, now) {
   const item = state.pack ? state.pack[round % state.pack.length] : null;
   const word = item ? item.word : drawWord(wordIndex + round * 17);
+  const roundMs = state.roundMs || ROUND_MS;
   return {
     ...state,
     phase: "draw",
@@ -148,8 +150,8 @@ function openRound(state, round, wordIndex, now) {
     scriptCursor: 0,
     hint: null,
     startedAt: now,
-    hintAt: now + HINT_MS,
-    endsAt: now + ROUND_MS,
+    hintAt: now + Math.floor(roundMs / 2),
+    endsAt: now + roundMs,
     strokes: [],
     solved: [],
     round: round + 1,

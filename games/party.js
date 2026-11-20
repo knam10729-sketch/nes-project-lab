@@ -1,4 +1,21 @@
-const CATS = [["food", "음식"], ["animal", "동물"], ["place", "장소"], ["job", "직업"], ["thing", "물건"], ["show", "영화·드라마"]];
+export const CATS = [
+  ["food", "음식"],
+  ["animal", "동물"],
+  ["place", "장소"],
+  ["job", "직업"],
+  ["thing", "물건"],
+  ["show", "영화·드라마"],
+  ["sport", "운동"],
+  ["school", "학교"],
+  ["nature", "자연"],
+  ["music", "음악"],
+  ["ride", "탈것"],
+  ["snack", "간식"],
+  ["clothes", "옷"],
+  ["plant", "식물"],
+  ["weather", "날씨"],
+  ["hobby", "취미"],
+];
 const YUT_COLORS = ["#171717", "#f4f1ea", "#c4554a", "#2a6f97"];
 const DRAW_COLORS = ["#171717", "#f4f1ea", "#c4554a", "#d38b2c", "#2f7d4a", "#2a6f97", "#6b4c9a", "#8a5a44"];
 const SPOTS = {
@@ -37,6 +54,14 @@ export function partyTurn(state, mySeat, secret) {
     if (state.position.phase === "vote") return "라이어에게 투표하세요";
     if (state.position.phase === "guess") return mine ? "단어를 맞혀 보세요" : "라이어가 단어를 맞히는 중";
   }
+  if (state.game === "mafia") {
+    if (state.status === "waiting") return mySeat === 0 ? "4명 이상이면 시작하세요" : "방장을 기다리는 중";
+    if (state.status === "over") return resultLine(state);
+    if (!secret?.alive && state.position.phase !== "over") return "탈락했습니다. 결과는 볼 수 있습니다.";
+    if (state.position.phase === "night") return secret?.role === "citizen" ? "밤입니다. 눈을 감고 기다리세요" : "밤 행동을 고르세요";
+    if (state.position.phase === "day") return "낮입니다. 소리 내어 이야기하세요";
+    if (state.position.phase === "vote") return "의심되는 사람에게 투표하세요";
+  }
   if (state.game === "draw") {
     if (state.status === "waiting") return mySeat === 0 ? "인원이 모이면 시작하세요" : "방장을 기다리는 중";
     if (secret?.role === "drawer") return `그릴 단어 · ${secret.word}`;
@@ -50,6 +75,7 @@ export function renderParty({ state, secret, mySeat, send }) {
   if (state.game === "yut") renderYut(state, mySeat, send);
   if (state.game === "liar") renderLiar(state, secret, mySeat, send);
   if (state.game === "draw") renderDraw(state, secret, mySeat, send);
+  if (state.game === "mafia") renderMafia(state, secret, mySeat, send);
 }
 
 export function applyInk(stroke) {
@@ -174,6 +200,7 @@ function renderLiar(state, secret, mySeat, send) {
   if (state.status === "waiting") card.append(el("p", { text: "3명에서 5명. 한 사람만 단어를 모릅니다." }));
   else if (secret?.role === "liar") card.append(el("p", { className: "eyebrow", text: "라이어" }), el("h2", { text: secret.category || state.position.category || "주제" }), el("p", { text: "단어는 모릅니다. 힌트만 듣고 감추세요." }));
   else card.append(el("p", { className: "eyebrow", text: state.position.category || "주제" }), el("h2", { text: secret?.word || "단어 확인 중" }));
+  if (state.position.prompt && state.status === "playing") card.append(el("p", { className: "muted", text: state.position.prompt }));
   const log = el("ol", { className: "chat" });
   for (const hint of state.position.hints || []) {
     const item = el("li", {});
@@ -215,6 +242,73 @@ function renderLiar(state, secret, mySeat, send) {
   }
 }
 
+function renderMafia(state, secret, mySeat, send) {
+  const wrap = document.getElementById("board-wrap");
+  const card = el("div", { className: "secret-card panel" });
+  if (state.status === "waiting") {
+    card.append(el("p", { text: "4명에서 10명이 모이면 방장이 시작합니다. 역할은 각자 폰에만 보입니다." }));
+  } else if (secret) {
+    card.append(el("p", { className: "eyebrow", text: secret.alive ? "내 역할" : "탈락 · 내 역할" }), el("h2", { text: secret.label }));
+    card.append(el("p", { text: roleHelp(secret.role) }));
+    if (secret.role === "mafia") {
+      const names = secret.allies.map((seat) => state.seats[seat]?.name).filter(Boolean);
+      card.append(el("p", { text: names.length ? `같은 마피아 · ${names.join(", ")}` : "같은 마피아는 없습니다." }));
+    }
+    if (secret.investigation) {
+      const name = state.seats[secret.investigation.target]?.name || "그 사람";
+      card.append(el("p", { text: secret.investigation.mafia ? `${name} 님은 마피아입니다.` : `${name} 님은 마피아가 아닙니다.` }));
+    }
+  }
+  const log = el("ol", { className: "mafia-log" });
+  for (const entry of state.position.log || []) log.append(el("li", { text: logLine(state, entry) }));
+  if (state.position.phase === "over" && state.position.roles) {
+    const reveal = el("ul", { className: "mafia-log" });
+    state.position.roles.forEach((role, index) => reveal.append(el("li", { text: `${state.seats[index]?.name || "손님"} · ${role.label}` })));
+    wrap.replaceChildren(card, log, reveal);
+  } else wrap.replaceChildren(card, log);
+  const actions = document.getElementById("actions");
+  actions.replaceChildren();
+  document.getElementById("scoreboard").replaceChildren();
+  if (state.status === "waiting" && mySeat === 0) actions.append(press("시작", "start", () => send({ type: "start" }), "primary"));
+  if (state.status === "playing" && mySeat === 0) actions.append(press("다음 단계", "advance", () => send({ type: "advance" })));
+  if (state.position.phase === "night" && secret?.alive && secret.role !== "citizen" && !secret.acted) {
+    livingSeats(state).forEach((index) => {
+      if (secret.role === "mafia" && (index === mySeat || secret.allies.includes(index))) return;
+      actions.append(press(state.seats[index].name, `night-${index}`, () => send({ type: "night", target: index })));
+    });
+  }
+  if (state.position.phase === "vote" && secret?.alive && !(state.position.voted || []).includes(mySeat)) {
+    livingSeats(state).forEach((index) => {
+      if (index === mySeat) return;
+      actions.append(press(state.seats[index].name, `vote-${index}`, () => send({ type: "vote", target: index })));
+    });
+  }
+  if (state.status === "over") actions.append(press("한 판 더", "rematch", () => send({ type: "rematch" }), "primary"));
+}
+
+function livingSeats(state) {
+  return state.position.alive.map((on, index) => on ? index : -1).filter((index) => index >= 0);
+}
+
+function roleHelp(role) {
+  if (role === "mafia") return "밤에는 함께 한 명을 고릅니다. 낮에는 시민인 척하세요.";
+  if (role === "police") return "밤에는 한 명을 조사합니다. 결과는 이 폰에만 남습니다.";
+  if (role === "doctor") return "밤에는 한 명을 지킵니다. 그 사람이 지목되면 살아남습니다.";
+  return "밤에는 기다리세요. 낮 이야기와 투표로 마피아를 찾습니다.";
+}
+
+function logLine(state, entry) {
+  const name = (seat) => state.seats[seat]?.name || "누군가";
+  if (entry.kind === "night-start") return `${entry.round}번째 밤입니다.`;
+  if (entry.kind === "night-death") return `${name(entry.seat)} 님이 밤 사이 쓰러졌습니다.`;
+  if (entry.kind === "quiet") return "밤은 조용히 지나갔습니다.";
+  if (entry.kind === "vote-start") return "투표를 시작합니다.";
+  if (entry.kind === "execute") return `${name(entry.seat)} 님이 투표로 퇴장했습니다.`;
+  if (entry.kind === "tie") return "표가 갈려 아무도 퇴장하지 않았습니다.";
+  if (entry.kind === "win") return entry.winner === "town" ? "시민 팀이 이겼습니다." : "마피아 팀이 이겼습니다.";
+  return "";
+}
+
 function renderDraw(state, secret, mySeat, send) {
   const wrap = document.getElementById("board-wrap");
   let canvas = document.getElementById("draw-canvas");
@@ -237,7 +331,10 @@ function renderDraw(state, secret, mySeat, send) {
   const actions = document.getElementById("actions");
   const draft = document.getElementById("line")?.value || "";
   actions.replaceChildren();
-  if (state.status === "waiting" && mySeat === 0) actions.append(press("시작", "start", () => send({ type: "start" }), "primary"));
+  if (state.status === "waiting") {
+    actions.append(drawTimes(state, mySeat, send));
+    if (mySeat === 0) actions.append(press("시작", "start", () => send({ type: "start" }), "primary"));
+  }
   if (state.position.phase === "draw" && state.turnSeat === mySeat) {
     const colors = el("div", { className: "swatches" });
     for (const color of DRAW_COLORS) {
@@ -298,6 +395,7 @@ function bindCanvas(canvas, send) {
   };
   canvas.addEventListener("pointerdown", (event) => {
     if (!drawerNow()) return;
+    event.preventDefault();
     drawing = true;
     canvas.setPointerCapture(event.pointerId);
     drawAnchor = null;
@@ -306,6 +404,7 @@ function bindCanvas(canvas, send) {
   });
   canvas.addEventListener("pointermove", (event) => {
     if (!drawing) return;
+    event.preventDefault();
     drawBuffer.push(point(event));
     const tail = drawBuffer.slice(-2);
     paint(canvas.getContext("2d"), canvas, { color: drawColor, erase: erasing, points: tail });
@@ -348,13 +447,38 @@ function latestSafe() {
   return window.__latestGame || null;
 }
 
+function drawTimes(state, mySeat, send) {
+  const box = el("div", { className: "times" });
+  const current = state.time?.drawSeconds || 80;
+  box.append(el("p", { className: "muted", text: `그리는 시간 ${current}초` }));
+  if (mySeat === 0) {
+    for (const value of [40, 60, 80, 100, 120]) {
+      const button = el("button", { type: "button", className: value === current ? "primary" : "", text: `${value}초` });
+      button.addEventListener("click", () => send({ type: "settings", seconds: value }));
+      box.append(button);
+    }
+  }
+  return box;
+}
+
 function lineBox(label, id, onSend, draft = "") {
-  const form = el("form", { className: "share" });
+  const form = el("form", { className: "line-form" });
   const input = el("input", { id: "line" });
   input.maxLength = 40;
   input.placeholder = label;
   input.value = draft;
+  input.enterKeyHint = "send";
   input.setAttribute("aria-label", label);
+  input.addEventListener("focus", () => {
+    const view = window.visualViewport;
+    if (view) {
+      document.documentElement.style.setProperty("--play-height", `${Math.round(view.height)}px`);
+      document.documentElement.style.setProperty("--play-top", `${Math.round(view.offsetTop)}px`);
+    }
+    const bring = () => input.scrollIntoView({ block: "center" });
+    setTimeout(bring, 60);
+    setTimeout(bring, 320);
+  });
   const button = el("button", { id, type: "submit", className: "primary", text: label });
   form.append(input, button);
   form.addEventListener("submit", (event) => {
@@ -402,6 +526,8 @@ function resultLine(state) {
     const name = state.seats[state.winnerSeat]?.name || "승자";
     return state.reason === "team" ? `${state.winnerSeat === 0 ? "1팀" : "2팀"} 승리` : `${name} 승리 · 말이 모두 들어왔습니다`;
   }
+  if (state.reason === "town") return "시민 승리 · 마피아를 모두 찾았습니다";
+  if (state.reason === "mafia") return "마피아 승리 · 수를 넘겼습니다";
   if (state.reason === "score") {
     if (state.draw || state.winnerSeat == null) return "무승부 · 최종 점수";
     return `${state.seats[state.winnerSeat]?.name || "승자"} 승리 · 최종 점수`;

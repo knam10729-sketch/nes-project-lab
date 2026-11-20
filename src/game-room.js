@@ -1,9 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
+import { attachMeet } from "../games/geo.js";
+import { handleMeetAction } from "../games/meet-pins.js";
 import { alarmAt, applyAction, armBot, createRoom, joinRoom, present, seatForToken, secretFor } from "./room-logic.js";
 
 export class GameRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.pins = new Map();
     try {
       this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     } catch {
@@ -36,6 +39,10 @@ export class GameRoom extends DurableObject {
       return;
     }
     if (!action || typeof action !== "object") return;
+    if (room.game === "meet" && (action.type === "pin" || action.type === "clearPin")) {
+      this.#pin(ws, room, action);
+      return;
+    }
     const now = Date.now();
     const result = settle(applyAction(room, seatOf(ws), action, now), now);
     const current = result.room || room;
@@ -73,6 +80,8 @@ export class GameRoom extends DurableObject {
       solo: body.solo === true,
       difficulty: body.difficulty,
       category: body.category,
+      moleSeconds: body.moleSeconds,
+      drawSeconds: body.drawSeconds,
     });
     if (!created.ok) return json({ error: created.error }, created.status || 400);
     const now = Date.now();
@@ -114,7 +123,7 @@ export class GameRoom extends DurableObject {
     }
     for (const ws of sockets) {
       const seat = seatOf(ws);
-      send(ws, { type: "state", state: present(room, Date.now(), connected), secret: secretFor(room, seat) });
+      send(ws, { type: "state", state: attachMeet(present(room, Date.now(), connected), this.pins), secret: secretFor(room, seat) });
     }
   }
 
@@ -136,7 +145,32 @@ export class GameRoom extends DurableObject {
   }
 
   async #save(room) {
-    await this.ctx.storage.put("room", room);
+    const stored = { ...room, data: room.data ? { ...room.data } : room.data };
+    delete stored.pins;
+    if (stored.data && typeof stored.data === "object") {
+      delete stored.data.pins;
+      delete stored.data.people;
+      delete stored.data.midpoint;
+      delete stored.data.lat;
+      delete stored.data.lng;
+    }
+    await this.ctx.storage.put("room", stored);
+  }
+
+  async #pin(ws, room, action) {
+    const seat = seatOf(ws);
+    if (!Number.isInteger(seat) || seat < 0 || seat >= room.seats.length) {
+      send(ws, { type: "error", error: "참가 중인 자리가 없습니다." });
+      return;
+    }
+    if (!this.pins) this.pins = new Map();
+    const result = handleMeetAction(this.pins, room, seat, action);
+    this.pins = result.pins;
+    if (!result.ok) {
+      send(ws, { type: "error", error: result.error });
+      return;
+    }
+    await this.#broadcast(room);
   }
 }
 

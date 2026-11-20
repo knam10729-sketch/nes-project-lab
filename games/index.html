@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#080808">
+<meta name="theme-color" content="#ffffff">
 <title>게임 | 정한.kr</title>
 <meta name="description" content="링크로 방을 만들어 오목, 체스, 장기, 두더지 잡기를 같이 합니다.">
-<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
-<link rel="stylesheet" href="/theme.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
+<link rel="stylesheet" href="/theme.css?v=20261111-yt">
 <link rel="stylesheet" href="/games/games.css">
 <script src="/theme.js" defer></script>
 </head>
 <body>
-<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/#calendar">공유 캘린더</a><a href="/games" aria-current="page">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="화이트 테마로 전환" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">화이트</span></button></nav></div></header>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils">유틸리티</a><a href="/guestbook">방명록</a><a href="/ideas">아이디어</a><a href="/games" aria-current="page">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
 <main class="wrap">
 <p class="eyebrow">PLAY TOGETHER</p>
 <h1>같이 두는 게임.</h1>
@@ -29,10 +29,12 @@
 <a class="card" href="/games/mole"><p class="eyebrow">1–4명</p><h3>두더지 잡기 대결</h3><p>60초 동안 같은 두더지가 모두에게 나옵니다. 먼저 누른 사람이 점수를 가져갑니다.</p><span class="go">방 만들기 →</span></a>
 <a class="card" href="/games/yut"><p class="eyebrow">2–4명</p><h3>윷놀이</h3><p>윷을 던져 말을 옮깁니다. 지름길, 업기, 잡기, 빽도까지 같은 판에서 진행합니다.</p><span class="go">방 만들기 →</span></a>
 <a class="card" href="/games/liar"><p class="eyebrow">3–5명</p><h3>라이어 게임</h3><p>한 사람만 단어를 모릅니다. 힌트를 주고받은 뒤 라이어를 찾아보세요.</p><span class="go">방 만들기 →</span></a>
+<a class="card" href="/games/mafia"><p class="eyebrow">4–10명</p><h3>마피아</h3><p>밤에는 역할을 숨기고, 낮에는 이야기한 뒤 투표합니다. 마피아를 모두 찾거나, 마피아가 수를 넘기면 끝납니다.</p><span class="go">방 만들기 →</span></a>
 <a class="card" href="/games/draw"><p class="eyebrow">2–5명</p><h3>그림 맞히기</h3><p>번갈아 그림을 그리고, 채팅으로 맞힙니다. 빠를수록 점수가 높습니다.</p><span class="go">방 만들기 →</span></a>
 </div>
+<a class="yt-banner" href="https://www.youtube.com/@neszal" target="_blank" rel="noopener">게임 재밌게 하셨나요? 만든 사람의 유튜브도 놀러 오세요 →</a>
 </main>
-<footer class="wrap">© <span id="year"></span> 정한.kr</footer>
+<footer class="wrap">© <span id="year"></span> 정한.kr <a class="yt-foot" href="https://www.youtube.com/@neszal" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.8 15.5v-7l6.2 3.5-6.2 3.5z"/></svg>유튜브 @neszal</a></footer>
 <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
 </body>
 </html>

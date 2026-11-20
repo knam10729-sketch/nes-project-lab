@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { begin, guess, hint, initialState, secretFor, vote } from "../src/games/liar.js";
+import { begin, guess, hint, initialState, publicView as liarView, secretFor, vote } from "../src/games/liar.js";
 import { begin as beginDraw, clearBoard, guess as guessDraw, publicView, stroke, tick, wordCount } from "../src/games/draw.js";
-import { choseong, DRAW_WORDS, CATEGORIES } from "../src/games/words.js";
+import { choseong, DRAW_WORDS, CATEGORIES, HINT_PROMPTS } from "../src/games/words.js";
+import { CATS } from "../games/party.js";
 import { applyAction, createRoom, joinRoom, present, secretFor as roomSecret } from "../src/room-logic.js";
 
 const TOKENS = ["a", "b", "c", "d", "e"].map((char) => char.repeat(32));
@@ -16,10 +17,19 @@ function party(game, count) {
 }
 
 test("word lists are original and large enough", () => {
+  const ids = Object.keys(CATEGORIES);
+  assert.equal(ids.length >= 16, true);
+  assert.deepEqual(CATS.map(([id]) => id), ids);
+  const all = [];
   for (const category of Object.values(CATEGORIES)) {
-    assert.equal(new Set(category.words).size, 30);
-    assert.equal(category.words.every((word) => word.length >= 2), true);
+    assert.equal(new Set(category.words).size, category.words.length);
+    assert.equal(category.words.length >= 30, true);
+    assert.equal(category.words.every((word) => [...word].length >= 2), true);
+    all.push(...category.words);
   }
+  assert.equal(new Set(all).size, all.length);
+  assert.equal(all.length >= 500, true);
+  assert.equal(HINT_PROMPTS.length >= 12, true);
   assert.equal(new Set(DRAW_WORDS).size >= 150, true);
   assert.equal(wordCount() >= 150, true);
   assert.equal(choseong("사과"), "ㅅㄱ");
@@ -94,6 +104,40 @@ test("drawing scores a fast guess, hides the word, and rotates the drawer", () =
   assert.equal(JSON.stringify(present(playing.room)).includes(playing.room.data.word), false);
   assert.equal(roomSecret(playing.room, 0).word, playing.room.data.word);
   assert.equal(roomSecret(playing.room, 1).word, undefined);
+});
+
+test("a room skips words it already used and shows a shared prompt", () => {
+  const words = CATEGORIES.food.words;
+  let state = initialState();
+  const seen = [];
+  for (let index = 0; index < words.length; index += 1) {
+    state = begin(state, 3, "food", 0, index).state;
+    seen.push(state.word);
+    assert.equal(HINT_PROMPTS.includes(state.prompt), true);
+    assert.equal(JSON.stringify(liarView(state)).includes(state.word), false);
+  }
+  assert.equal(new Set(seen).size, words.length);
+  let room = party("liar", 3);
+  room = applyAction(room, 0, { type: "start", category: "hobby" }, 2_000).room;
+  const first = room.data.word;
+  for (let round = 0; round < 2; round += 1) {
+    for (let seat = 0; seat < 3; seat += 1) {
+      const said = applyAction(room, room.data.turn, { type: "hint", text: `패스${round}${seat}` }, 2_100 + round * 10 + seat);
+      assert.equal(said.ok, true);
+      room = said.room;
+    }
+  }
+  room = applyAction(room, 0, { type: "vote", target: 1 }, 3_000).room;
+  room = applyAction(room, 1, { type: "vote", target: 2 }, 3_001).room;
+  room = applyAction(room, 2, { type: "vote", target: 0 }, 3_002).room;
+  assert.equal(room.status, "over");
+  room = applyAction(room, 0, { type: "rematch" }, 4_000).room;
+  assert.equal(room.status, "waiting");
+  assert.equal(room.data.recentWords.includes(first), true);
+  room = applyAction(room, 0, { type: "start", category: "hobby" }, 5_000).room;
+  assert.notEqual(room.data.word, first);
+  assert.equal(room.data.recentWords.includes(first), true);
+  assert.equal(JSON.stringify(present(room)).includes(first), false);
 });
 
 test("liar rooms keep the word off the shared state", () => {

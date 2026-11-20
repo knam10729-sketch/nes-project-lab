@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>방명록 | 정한.kr</title>
+<meta name="description" content="정한.kr 방명록">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
+<link rel="stylesheet" href="/theme.css?v=20261111-yt">
+<link rel="stylesheet" href="/games/games.css">
+<link rel="stylesheet" href="/ideas/ideas.css">
+<script src="/theme.js" defer></script>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils">유틸리티</a><a href="/guestbook" aria-current="page">방명록</a><a href="/ideas">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
+<main class="wrap" id="app">
+<p class="eyebrow">GUESTBOOK</p>
+<h1>방명록</h1>
+<p class="lead">이름과 짧은 글을 남깁니다. 비공개로 남기면 관리자만 내용을 봅니다.</p>
+<form id="write" class="setup panel">
+<label for="guest-name">이름</label>
+<input id="guest-name" maxlength="20" placeholder="비우면 익명" autocomplete="nickname">
+<label for="guest-text">내용</label>
+<textarea id="guest-text" maxlength="300" required placeholder="300자 안에서"></textarea>
+<label class="luck-chip"><input id="guest-private" type="checkbox"> 비공개</label>
+<button class="primary" type="submit">남기기</button>
+<p class="note" id="write-note"></p>
+</form>
+<form id="admin" class="setup panel" method="post" action="/guestbook/unlock">
+<p class="eyebrow">관리자</p>
+<label for="admin-pass">비밀번호</label>
+<input id="admin-pass" name="password" type="password" inputmode="numeric" autocomplete="current-password" aria-label="관리자 비밀번호">
+<button type="submit">관리자로 보기</button>
+<p class="note" id="admin-note"></p>
+</form>
+<div id="entries"></div>
+</main>
+<footer class="wrap">© <span id="year"></span> 정한.kr <a class="yt-foot" href="https://www.youtube.com/@neszal" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.8 15.5v-7l6.2 3.5-6.2 3.5z"/></svg>유튜브 @neszal</a></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+<script src="/guestbook/guestbook.js" type="module"></script>
+</body>
+</html>
