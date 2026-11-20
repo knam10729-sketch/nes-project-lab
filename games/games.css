@@ -77,13 +77,14 @@ button.point.han{background-color:#fbfbfb;color:#161616;box-shadow:0 0 0 1.5px #
 .sq.mark{outline:3px solid var(--ink);outline-offset:-3px}
 .sq.last{box-shadow:inset 0 0 0 4px rgba(210,75,75,.75)}
 .sq:focus-visible,.point:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.moles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;overflow:visible}
+.moles{--mole-fit:min(70vw,calc(100svh - 340px),calc(100dvh - 340px),380px);display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:var(--mole-fit);height:var(--mole-fit);max-width:100%;margin-inline:auto;overflow:visible}
 .pit{position:relative;overflow:visible}
 .hole{width:100%;aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle at 50% 40%,#3a342c,#141210 70%);position:relative;overflow:hidden;cursor:pointer;appearance:none;-webkit-appearance:none;display:block}
 .mole-clip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
 .whack-pop{position:absolute;left:50%;top:0;transform:translate(-50%,-78%);background:#fff;color:#111;font-weight:800;font-size:13px;line-height:1.2;padding:5px 8px;border-radius:999px;z-index:6;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.whack-pop.late{white-space:normal;width:max-content;max-width:148%;text-align:center;font-size:11px;border-radius:12px}
 .whack-log{min-height:1.4em;margin:8px 0 0;font-weight:700}
-.mole{position:absolute;left:16%;right:16%;top:14%;height:70%;border-radius:48% 48% 42% 42%;background:#c7b299;transition:transform .12s ease-out;transform:translateY(130%)}
+.mole{position:absolute;left:20%;right:20%;top:20%;height:58%;border-radius:48% 48% 42% 42%;background:#c7b299;transition:transform .12s ease-out;transform:translateY(130%)}
 .pit.up .mole{transform:translateY(0)}
 .mole i{position:absolute;top:32%;width:16%;height:16%;background:#221c16;border-radius:50%}
 .mole i:first-child{left:24%}.mole i:last-child{right:24%}
@@ -231,7 +232,14 @@ html.game-lock .note{min-height:0}
 html.game-lock .board-wrap{flex:1 1 auto;min-height:0;width:100%;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;container-type:size;touch-action:none}
 html.game-lock .gomoku,html.game-lock .chess{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-width:100%;max-height:100%}
 html.game-lock .janggi{aspect-ratio:8/9;width:min(100cqw,calc(100cqh * 8 / 9));height:auto;max-height:100%}
-html.game-lock .moles{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-height:100%;gap:6px}
+html.game-lock .moles{--mole-fit:min(70vw,calc(100svh - 320px),calc(100dvh - 320px),380px);width:var(--mole-fit);height:var(--mole-fit);max-height:100%;gap:5px}
+html.game-lock .board-wrap:has(.moles){overflow:visible}
+html.play-scroll,html.play-scroll body{height:auto;min-height:100dvh;max-height:none;overflow-x:hidden;overflow-y:auto}
+html.play-scroll body{position:static;width:auto;display:block;touch-action:pan-y}
+html.play-scroll main.wrap{overflow:visible;display:block;max-height:none;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+html.play-scroll .board-wrap{overflow:visible;touch-action:pan-y;height:auto}
+html.play-scroll #draw-canvas{width:min(100%,calc(58dvh * 10 / 7),720px);height:auto;max-height:none;touch-action:none}
+html.play-scroll .actions{max-height:none;overflow:visible;touch-action:manipulation}
 html.game-lock .yut-board{width:min(100cqw,100cqh);height:min(100cqw,100cqh);margin:0}
 html.game-lock #draw-canvas{width:min(100cqw,calc(100cqh * 10 / 7));height:auto;max-height:100%;margin:0;touch-action:none}
 html.game-lock .secret-card{flex:none;width:100%;padding:10px 12px}

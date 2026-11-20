@@ -1,15 +1,24 @@
-export function playLocked(status) {
-  return status === "playing";
+const SCROLL_GAMES = new Set(["draw", "liar"]);
+
+export function playLocked(status, game) {
+  if (status !== "playing") return false;
+  return !SCROLL_GAMES.has(game);
 }
 
-export function lockPlay(on) {
-  document.documentElement.classList.toggle("game-lock", Boolean(on));
+export function playScrolls(game) {
+  return SCROLL_GAMES.has(game);
+}
+
+export function lockPlay(on, scrolls) {
+  const root = document.documentElement;
+  root.classList.toggle("game-lock", Boolean(on));
+  root.classList.toggle("play-scroll", Boolean(scrolls));
   if (on) {
     bindViewport();
     syncViewport();
   } else {
-    document.documentElement.style.removeProperty("--play-height");
-    document.documentElement.style.removeProperty("--play-top");
+    root.style.removeProperty("--play-height");
+    root.style.removeProperty("--play-top");
   }
 }
 

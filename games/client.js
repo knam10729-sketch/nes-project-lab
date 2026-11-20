@@ -1,6 +1,6 @@
-import { lockPlay, playLocked } from "./fit.js";
-import { BONK_MS, dropLocalPops, labelForHole, noteLatest, pinLocalPop, whackKey } from "./mole-view.js";
-import { applyInk, partyTurn, remember, renderParty } from "./party.js";
+import { lockPlay, playLocked, playScrolls } from "./fit.js";
+import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js";
+import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js";
 import { drawQr } from "./qr.js";
 
 const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
@@ -50,6 +50,7 @@ let secret = null;
 let syncedEnd = false;
 let frame = 0;
 let molePops = [];
+let swungMoles = new Set();
 const moleBonks = new Map();
 const seenWhacks = new Set();
 
@@ -99,7 +100,7 @@ function mountSetup() {
   if (game === "liar") {
     category = document.createElement("select");
     category.id = "setup-category";
-    for (const [id, labelText] of [["food", "음식"], ["animal", "동물"], ["place", "장소"], ["job", "직업"], ["thing", "물건"], ["show", "영화·드라마"]]) {
+    for (const [id, labelText] of CATS) {
       const option = document.createElement("option");
       option.value = id;
       option.textContent = labelText;
@@ -276,8 +277,6 @@ function connect() {
     if (message.type === "error") {
       setNote(message.error);
       latest?.position?.active?.forEach((mole) => { delete mole.sent; });
-      molePops = dropLocalPops(molePops);
-      for (const [hole, bonk] of moleBonks) if (bonk.local) moleBonks.delete(hole);
       paintMoleHoles();
     }
   });
@@ -296,7 +295,7 @@ function connect() {
 
 function render(state) {
   latest = state;
-  lockPlay(playLocked(state.status));
+  lockPlay(playLocked(state.status, state.game), playScrolls(state.game));
   remember(state, mySeat);
   skew = state.now - Date.now();
   if (state.turnSeat !== mySeat) {
@@ -504,31 +503,31 @@ function renderMole(state) {
         const active = latest?.position.active?.find((mole) => mole.hole === hole && serverNow() <= mole.expiresAt);
         if (!active || active.sent) return;
         active.sent = true;
-        const now = Date.now();
-        molePops = pinLocalPop(molePops, {
-          hole,
-          seat: mySeat,
-          name: latest?.seats?.[mySeat]?.name,
-          moleId: active.id,
-        }, now);
-        moleBonks.set(hole, { until: now + BONK_MS, local: true });
-        paintMoleHoles();
+        swungMoles.add(active.id);
         send({ type: "hit", moleId: active.id });
       });
       board.append(pit);
     }
     wrap.replaceChildren(board);
   }
+  if (state.position?.phase === "waiting" || state.position?.phase === "countdown") {
+    swungMoles = new Set();
+    molePops = [];
+    seenWhacks.clear();
+  }
   const names = (seat) => state.seats[seat]?.name || "누군가";
-  molePops = noteLatest(molePops, state.position.lastWhack, names, Date.now(), serverNow());
-  const key = whackKey(state.position.lastWhack);
-  if (key && !seenWhacks.has(key)) {
-    seenWhacks.add(key);
-    const age = serverNow() - state.position.lastWhack.at;
-    const hole = state.position.lastWhack.hole;
-    if (age <= BONK_MS + 200 && (moleBonks.get(hole)?.until || 0) <= Date.now()) {
-      moleBonks.set(hole, { until: Date.now() + BONK_MS, local: false });
-    }
+  const before = new Set(molePops.map((pop) => pop.key));
+  molePops = noteServerWhacks(molePops, state.position.whacks, {
+    mySeat,
+    swung: swungMoles,
+    nameOf: names,
+    now: Date.now(),
+    serverNow: serverNow(),
+  });
+  for (const pop of molePops) {
+    if (before.has(pop.key) || seenWhacks.has(pop.key)) continue;
+    seenWhacks.add(pop.key);
+    if (pop.seat === mySeat && !pop.late) moleBonks.set(pop.hole, { until: Date.now() + BONK_MS, local: false });
   }
   paintMoleHoles();
   let log = document.getElementById("whack-log");
@@ -557,7 +556,8 @@ function paintMoleHoles() {
     const name = labelForHole(molePops, index, now);
     if (!pop) return;
     pop.hidden = !name;
-    if (name) pop.textContent = `+1 ${name}`;
+    pop.classList.toggle("late", Boolean(name && name.includes("먼저")));
+    if (name) pop.textContent = name;
   });
 }
 

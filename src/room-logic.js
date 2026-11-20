@@ -208,9 +208,17 @@ function moleAction(room, seat, action, now, changed) {
     return { ok: true, room, changed: true };
   }
   if (action.type === "hit") {
-    const mole = room.data.active.find((item) => item.id === Number(action.moleId));
-    const result = hit(room.data, seat, Number(action.moleId), now);
-    if (!result.ok) return stopped("이미 사라졌거나 다른 사람이 잡았습니다.", room, changed);
+    const moleId = Number(action.moleId);
+    const mole = room.data.active.find((item) => item.id === moleId);
+    const result = hit(room.data, seat, moleId, now);
+    if (!result.ok) {
+      const taken = [...(room.data.whacks || [])].reverse().find((item) => item.moleId === moleId);
+      if (taken) {
+        const name = room.seats[taken.seat]?.name || "누군가";
+        return stopped(`${name}님이 먼저 잡았어요`, room, changed);
+      }
+      return stopped("이미 사라졌거나 다른 사람이 잡았습니다.", room, changed);
+    }
     room.data = rememberWhack(result.state, mole, seat, now);
     return { ok: true, room, changed: true };
   }
@@ -250,15 +258,20 @@ function rematch(room, now = Date.now()) {
   next.reason = null;
   next.botAt = null;
   if (next.solo) {
+    const recentWords = next.game === "liar" ? [...(next.data.recentWords || [])] : null;
+    const categoryId = next.data.categoryId || "food";
     next.data = initialData(next.game);
+    if (recentWords) next.data.recentWords = recentWords;
     next.status = "waiting";
     next.firstSeat = 0;
-    startSolo(next, now, next.difficulty, room.data.categoryId || "food", false);
+    startSolo(next, now, next.difficulty, categoryId, false);
     return next;
   }
   if (PARTY.has(next.game)) {
+    const recentWords = next.game === "liar" ? [...(next.data.recentWords || [])] : null;
     next.status = "waiting";
     next.data = initialData(next.game);
+    if (recentWords) next.data.recentWords = recentWords;
     next.firstSeat = 0;
     return next;
   }
@@ -348,7 +361,7 @@ function startParty(room, seat, action, now) {
   const started = room.game === "yut"
     ? beginYut(room.data, count, Boolean(action.teams))
     : room.game === "liar"
-      ? beginLiar(room.data, count, action.category, randomInt(count), randomInt(30))
+      ? beginLiar(room.data, count, action.category, randomInt(count), randomInt(liarWordCount(action.category)))
       : room.game === "mafia"
         ? beginMafia(room.data, assignRoles(count, randomInt), now)
         : beginDraw(room.data, count, randomInt(1000), now, { durationMs: room.settings?.drawMs });
@@ -542,7 +555,7 @@ function startSolo(room, now, difficulty, category, addPlayers = true) {
     if (started.ok) room.data = started.state;
   } else if (room.game === "liar") {
     const picked = CATEGORIES[category] ? category : "food";
-    const started = beginLiar(room.data, players, picked, randomInt(players), randomInt(30));
+    const started = beginLiar(room.data, players, picked, randomInt(players), randomInt(liarWordCount(picked)));
     if (started.ok) room.data = started.state;
   } else if (room.game === "draw") {
     const started = beginDraw(room.data, players, randomInt(1000), now, {
@@ -734,8 +747,12 @@ function actMole(room, now) {
 }
 
 function rememberWhack(state, mole, seat, now) {
-  const whack = { hole: mole?.hole ?? null, seat, at: now };
+  const whack = { hole: mole?.hole ?? null, moleId: mole?.id ?? null, seat, at: now };
   return { ...state, lastWhack: whack, whacks: [...(state.whacks || []), whack].slice(-8) };
+}
+
+function liarWordCount(categoryId) {
+  return CATEGORIES[categoryId]?.words.length || CATEGORIES.food.words.length;
 }
 
 function applySettings(room, seat, action) {

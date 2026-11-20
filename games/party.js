@@ -1,4 +1,21 @@
-const CATS = [["food", "음식"], ["animal", "동물"], ["place", "장소"], ["job", "직업"], ["thing", "물건"], ["show", "영화·드라마"]];
+export const CATS = [
+  ["food", "음식"],
+  ["animal", "동물"],
+  ["place", "장소"],
+  ["job", "직업"],
+  ["thing", "물건"],
+  ["show", "영화·드라마"],
+  ["sport", "운동"],
+  ["school", "학교"],
+  ["nature", "자연"],
+  ["music", "음악"],
+  ["ride", "탈것"],
+  ["snack", "간식"],
+  ["clothes", "옷"],
+  ["plant", "식물"],
+  ["weather", "날씨"],
+  ["hobby", "취미"],
+];
 const YUT_COLORS = ["#171717", "#f4f1ea", "#c4554a", "#2a6f97"];
 const DRAW_COLORS = ["#171717", "#f4f1ea", "#c4554a", "#d38b2c", "#2f7d4a", "#2a6f97", "#6b4c9a", "#8a5a44"];
 const SPOTS = {
@@ -183,6 +200,7 @@ function renderLiar(state, secret, mySeat, send) {
   if (state.status === "waiting") card.append(el("p", { text: "3명에서 5명. 한 사람만 단어를 모릅니다." }));
   else if (secret?.role === "liar") card.append(el("p", { className: "eyebrow", text: "라이어" }), el("h2", { text: secret.category || state.position.category || "주제" }), el("p", { text: "단어는 모릅니다. 힌트만 듣고 감추세요." }));
   else card.append(el("p", { className: "eyebrow", text: state.position.category || "주제" }), el("h2", { text: secret?.word || "단어 확인 중" }));
+  if (state.position.prompt && state.status === "playing") card.append(el("p", { className: "muted", text: state.position.prompt }));
   const log = el("ol", { className: "chat" });
   for (const hint of state.position.hints || []) {
     const item = el("li", {});
@@ -377,6 +395,7 @@ function bindCanvas(canvas, send) {
   };
   canvas.addEventListener("pointerdown", (event) => {
     if (!drawerNow()) return;
+    event.preventDefault();
     drawing = true;
     canvas.setPointerCapture(event.pointerId);
     drawAnchor = null;
@@ -385,6 +404,7 @@ function bindCanvas(canvas, send) {
   });
   canvas.addEventListener("pointermove", (event) => {
     if (!drawing) return;
+    event.preventDefault();
     drawBuffer.push(point(event));
     const tail = drawBuffer.slice(-2);
     paint(canvas.getContext("2d"), canvas, { color: drawColor, erase: erasing, points: tail });
@@ -455,7 +475,9 @@ function lineBox(label, id, onSend, draft = "") {
       document.documentElement.style.setProperty("--play-height", `${Math.round(view.height)}px`);
       document.documentElement.style.setProperty("--play-top", `${Math.round(view.offsetTop)}px`);
     }
-    setTimeout(() => input.scrollIntoView({ block: "nearest" }), 60);
+    const bring = () => input.scrollIntoView({ block: "center" });
+    setTimeout(bring, 60);
+    setTimeout(bring, 320);
   });
   const button = el("button", { id, type: "submit", className: "primary", text: label });
   form.append(input, button);

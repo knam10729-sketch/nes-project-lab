@@ -1,4 +1,4 @@
-import { CATEGORIES, pickWord } from "./words.js";
+import { CATEGORIES, pickPrompt, pickWord } from "./words.js";
 
 export function initialState() {
   return {
@@ -15,6 +15,8 @@ export function initialState() {
     accused: null,
     guess: null,
     playerCount: 0,
+    recentWords: [],
+    prompt: null,
   };
 }
 
@@ -25,7 +27,8 @@ export function categories() {
 export function begin(state, playerCount, categoryId, liarSeat, wordIndex) {
   const count = Number(playerCount);
   if (count < 3 || count > 5) return { ok: false, error: "players" };
-  const picked = pickWord(categoryId, wordIndex);
+  const recent = Array.isArray(state?.recentWords) ? state.recentWords : [];
+  const picked = pickWord(categoryId, wordIndex, recent);
   if (!picked) return { ok: false, error: "category" };
   if (!Number.isInteger(liarSeat) || liarSeat < 0 || liarSeat >= count) return { ok: false, error: "liar" };
   return {
@@ -36,6 +39,8 @@ export function begin(state, playerCount, categoryId, liarSeat, wordIndex) {
       categoryId,
       category: picked.category,
       word: picked.word,
+      recentWords: picked.recent,
+      prompt: pickPrompt((Number(wordIndex) || 0) + recent.length * 3),
       liar: liarSeat,
       turn: 0,
       playerCount: count,
@@ -105,6 +110,7 @@ export function publicView(state) {
   return {
     phase: state.phase,
     category: state.category,
+    prompt: state.prompt || null,
     round: state.round,
     rounds: state.rounds,
     turn: state.phase === "hint" ? state.turn : state.phase === "guess" ? state.liar : null,
