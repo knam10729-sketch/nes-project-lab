@@ -22,6 +22,7 @@ test("the guestbook API never returns a private body without the admin cookie", 
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
+    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });
@@ -55,7 +56,7 @@ test("the guestbook API never returns a private body without the admin cookie", 
       method: "POST",
       redirect: "manual",
       headers: { origin, "content-type": "application/x-www-form-urlencoded" },
-      body: "password=2002",
+      body: "password=test-admin-pass",
     });
     assert.equal(opened.status, 302);
     const cookie = opened.headers.get("set-cookie").split(";")[0];

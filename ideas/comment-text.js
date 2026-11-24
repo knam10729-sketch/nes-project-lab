@@ -1,7 +1,6 @@
 export const COMMENT_COOLDOWN_MS = 1500;
 export const COMMENT_LIST_CAP = 50;
 export const COMMENT_STORE_CAP = 100;
-export const BOARD_PASSWORD = "2002";
 const PASSWORD_ROUNDS = 20_000;
 
 export function commentsToImport(current, legacy) {
@@ -24,8 +23,10 @@ export async function hashCommentPassword(password) {
   return { salt: toHex(salt), hash: toHex(await derive(password, salt)) };
 }
 
-export async function passwordMatches(password, saltHex, hashHex) {
-  if (!saltHex || !hashHex) return sameText(String(password || ""), BOARD_PASSWORD);
+// Old comments without their own hash can only be removed with the admin password
+// (ADMIN_PASSWORD secret). Without that secret they cannot be removed at all.
+export async function passwordMatches(password, saltHex, hashHex, adminPassword = "") {
+  if (!saltHex || !hashHex) return Boolean(adminPassword) && Boolean(password) && sameText(String(password), String(adminPassword));
   const next = toHex(await derive(password, fromHex(saltHex)));
   return sameText(next, hashHex);
 }

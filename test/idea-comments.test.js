@@ -17,9 +17,11 @@ test("comment text stays plain and time is shown in Seoul terms", async () => {
   const stored = await hashCommentPassword("1234");
   assert.notEqual(stored.hash, "1234");
   assert.equal(await passwordMatches("1234", stored.salt, stored.hash), true);
-  assert.equal(await passwordMatches("2002", stored.salt, stored.hash), false);
-  assert.equal(await passwordMatches("2002", null, null), true);
-  assert.equal(await passwordMatches("1999", null, null), false);
+  assert.equal(await passwordMatches("test-admin-pass", stored.salt, stored.hash, "test-admin-pass"), false);
+  assert.equal(await passwordMatches("test-admin-pass", null, null, "test-admin-pass"), true);
+  assert.equal(await passwordMatches("test-admin-pass", null, null), false);
+  assert.equal(await passwordMatches("", null, null, ""), false);
+  assert.equal(await passwordMatches("1999", null, null, "test-admin-pass"), false);
   const kept = { id: "new", body: "그대로" };
   const old = { id: "old", body: "이전 번호" };
   assert.deepEqual(commentsToImport([], [old]), [old]);
@@ -39,6 +41,7 @@ test("comments can be posted, listed, and refused while locked", async () => {
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
+    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });
@@ -50,7 +53,7 @@ test("comments can be posted, listed, and refused while locked", async () => {
       method: "POST",
       redirect: "manual",
       headers: { origin, "content-type": "application/x-www-form-urlencoded" },
-      body: "password=2002&next=/ideas/2",
+      body: "password=test-admin-pass&next=/ideas/2",
     });
     const cookie = opened.headers.get("set-cookie").split(";")[0];
     const headers = { origin, cookie, "content-type": "application/json" };

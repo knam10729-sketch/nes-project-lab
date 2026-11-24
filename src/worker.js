@@ -21,17 +21,38 @@ export default {
   },
 };
 
-const IDEA_PASSWORD = "2002";
 const IDEA_COOKIE = "nes-ideas";
-const IDEA_SECRET = "jeonghan.kr ideas gate v1";
 const IDEA_MAX_AGE = 60 * 60 * 24 * 30;
 
 const GUEST_COOKIE = "nes-guest-admin";
-const GUEST_SECRET = "jeonghan.kr guestbook admin v1";
+
+// The admin password and the cookie-signing key live in Cloudflare secrets
+// (ADMIN_PASSWORD, COOKIE_SECRET), never in the source. If either is missing,
+// every admin check fails closed.
+function adminPasswordOk(env, password) {
+  const expected = typeof env?.ADMIN_PASSWORD === "string" ? env.ADMIN_PASSWORD : "";
+  // Without a signing key a login could never be kept, so refuse it up front.
+  if (!expected || !password || !env?.COOKIE_SECRET) return false;
+  return sameText(password, expected);
+}
+
+async function signWith(env, scope, payload) {
+  const secret = typeof env?.COOKIE_SECRET === "string" ? env.COOKIE_SECRET : "";
+  if (!secret) return "";
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(`${scope}:${secret}`),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const bits = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return [...new Uint8Array(bits)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
 
 async function handleGuestbook(request, env, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/guestbook";
-  if (request.method === "POST" && path === "/guestbook/unlock") return unlockGuest(request, url);
+  if (request.method === "POST" && path === "/guestbook/unlock") return unlockGuest(request, env, url);
   if ((request.method === "POST" || request.method === "GET") && path === "/guestbook/lock") return lockGuest();
   if (path === "/guestbook") return serve(request, env, "/guestbook/index.html");
   if (path === "/guestbook/guestbook.js") return env.ASSETS.fetch(request);
@@ -42,7 +63,7 @@ async function handleGuestbook(request, env, url) {
 
 async function guestEntries(request, env, url, id) {
   if (!env.GUESTBOOK) return json({ error: "방명록 저장소가 아직 연결되지 않았습니다." }, 503);
-  const admin = await guestCookieValid(request);
+  const admin = await guestCookieValid(request, env);
   if (request.method !== "GET" && crossSite(request, url)) return text("Forbidden", 403);
   if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error: "요청을 찾을 수 없습니다." }, 405);
   if (request.method === "DELETE" && !admin) return json({ error: "관리자만 지울 수 있습니다." }, 401);
@@ -63,7 +84,7 @@ async function guestEntries(request, env, url, id) {
   return json({ entries: data.entries || [], admin });
 }
 
-async function unlockGuest(request, url) {
+async function unlockGuest(request, env, url) {
   if (crossSite(request, url)) return text("Forbidden", 403);
   let password = "";
   try {
@@ -72,11 +93,11 @@ async function unlockGuest(request, url) {
   } catch {
     password = "";
   }
-  if (!sameText(password, IDEA_PASSWORD)) {
+  if (!adminPasswordOk(env, password)) {
     return new Response(null, { status: 401, headers: { location: "/guestbook?admin=0", "cache-control": "private, no-store" } });
   }
   const exp = Math.floor(Date.now() / 1000) + IDEA_MAX_AGE;
-  const sig = await guestSign(`guest:${exp}`);
+  const sig = await guestSign(env, `guest:${exp}`);
   const headers = new Headers({ location: "/guestbook", "cache-control": "private, no-store" });
   headers.append("set-cookie", `${GUEST_COOKIE}=${exp}.${sig}; HttpOnly; Secure; SameSite=Lax; Path=/guestbook; Max-Age=${IDEA_MAX_AGE}`);
   return new Response(null, { status: 302, headers });
@@ -88,35 +109,27 @@ function lockGuest() {
   return new Response(null, { status: 302, headers });
 }
 
-async function guestCookieValid(request) {
+async function guestCookieValid(request, env) {
   const raw = readCookie(request.headers.get("cookie"), GUEST_COOKIE);
   const match = /^(\d+)\.([a-f0-9]{64})$/.exec(raw);
   if (!match) return false;
   const exp = Number(match[1]);
   if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
-  const expected = await guestSign(`guest:${exp}`);
-  return sameText(expected, match[2]);
+  const expected = await guestSign(env, `guest:${exp}`);
+  return Boolean(expected) && sameText(expected, match[2]);
 }
 
-async function guestSign(payload) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(GUEST_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const bits = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  return [...new Uint8Array(bits)].map((value) => value.toString(16).padStart(2, "0")).join("");
+function guestSign(env, payload) {
+  return signWith(env, "guestbook", payload);
 }
 
 async function handleIdeas(request, env, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/ideas";
-  if (request.method === "POST" && path === "/ideas/unlock") return unlockIdeas(request, url);
+  if (request.method === "POST" && path === "/ideas/unlock") return unlockIdeas(request, env, url);
   if ((request.method === "POST" || request.method === "GET") && path === "/ideas/lock") return lockIdeas();
   const commentMatch = path.match(/^\/ideas\/api\/comments\/(\d+)(?:\/([A-Za-z0-9-]+))?$/);
   if (commentMatch) return ideaComments(request, env, url, commentMatch[1], commentMatch[2] || "");
-  if (!(await ideaCookieValid(request))) return ideaLocked(request, path);
+  if (!(await ideaCookieValid(request, env))) return ideaLocked(request, path);
   if (path === "/ideas") return privateAsset(request, env, "/ideas/index.html");
   if (/^\/ideas\/\d+$/.test(path)) return privateAsset(request, env, "/ideas/detail.html");
   if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/comments.js", "/ideas/comment-text.js", "/ideas/ideas.css"].includes(path)) {
@@ -126,7 +139,7 @@ async function handleIdeas(request, env, url) {
 }
 
 async function ideaComments(request, env, url, ideaId, commentId) {
-  if (!(await ideaCookieValid(request))) {
+  if (!(await ideaCookieValid(request, env))) {
     return new Response(JSON.stringify({ error: "잠겨 있습니다." }), {
       status: 401,
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, no-store" },
@@ -181,7 +194,7 @@ async function migrateLegacyComments(env, idea) {
   }
 }
 
-async function unlockIdeas(request, url) {
+async function unlockIdeas(request, env, url) {
   if (crossSite(request, url)) return text("Forbidden", 403);
   let password = "";
   let next = "/ideas";
@@ -192,12 +205,12 @@ async function unlockIdeas(request, url) {
   } catch {
     password = "";
   }
-  if (!sameText(password, IDEA_PASSWORD)) {
+  if (!adminPasswordOk(env, password)) {
     await new Promise((resolve) => setTimeout(resolve, 700));
     return ideaGate(next, true);
   }
   const exp = Math.floor(Date.now() / 1000) + IDEA_MAX_AGE;
-  const sig = await ideaSign(`ideas:${exp}`);
+  const sig = await ideaSign(env, `ideas:${exp}`);
   const headers = new Headers({
     location: next,
     "cache-control": "private, no-store",
@@ -286,26 +299,18 @@ ${error}
   });
 }
 
-async function ideaCookieValid(request) {
+async function ideaCookieValid(request, env) {
   const raw = readCookie(request.headers.get("cookie"), IDEA_COOKIE);
   const match = /^(\d+)\.([a-f0-9]{64})$/.exec(raw);
   if (!match) return false;
   const exp = Number(match[1]);
   if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
-  const expected = await ideaSign(`ideas:${exp}`);
-  return sameText(expected, match[2]);
+  const expected = await ideaSign(env, `ideas:${exp}`);
+  return Boolean(expected) && sameText(expected, match[2]);
 }
 
-async function ideaSign(payload) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(IDEA_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const bits = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  return [...new Uint8Array(bits)].map((value) => value.toString(16).padStart(2, "0")).join("");
+function ideaSign(env, payload) {
+  return signWith(env, "ideas", payload);
 }
 
 function readCookie(header, name) {

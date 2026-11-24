@@ -113,6 +113,8 @@ function ideaEnv() {
   return {
     seen,
     env: {
+      ADMIN_PASSWORD: "test-admin-pass",
+      COOKIE_SECRET: "test-cookie-secret",
       ASSETS: {
         async fetch(request) {
           seen.push(new URL(request.url).pathname);
@@ -156,7 +158,7 @@ test("ideas stay locked until the password cookie is valid", async () => {
   const opened = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
     method: "POST",
     headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
-    body: "password=2002&next=/ideas/1",
+    body: "password=test-admin-pass&next=/ideas/1",
   }), env);
   assert.equal(opened.status, 302);
   assert.equal(opened.headers.get("location"), "/ideas/1");
@@ -177,4 +179,22 @@ test("ideas stay locked until the password cookie is valid", async () => {
   }), env);
   assert.equal(locked.status, 302);
   assert.match(locked.headers.get("set-cookie"), /Max-Age=0/);
+});
+
+test("admin unlock fails closed when the secrets are missing", async () => {
+  const post = (path, body) => new Request(`https://jeonghan.kr${path}`, {
+    method: "POST",
+    headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const noPassword = ideaEnv().env;
+  delete noPassword.ADMIN_PASSWORD;
+  const ideas = await handler.fetch(post("/ideas/unlock", "password=test-admin-pass&next=/ideas/1"), noPassword);
+  assert.equal(ideas.status, 401);
+  assert.equal(ideas.headers.get("set-cookie"), null);
+  const noKey = ideaEnv().env;
+  delete noKey.COOKIE_SECRET;
+  const guest = await handler.fetch(post("/guestbook/unlock", "password=test-admin-pass"), noKey);
+  assert.equal(guest.status, 401);
+  assert.equal(guest.headers.get("set-cookie"), null);
 });

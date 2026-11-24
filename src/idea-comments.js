@@ -121,7 +121,7 @@ export class IdeaComments extends DurableObject {
       id,
     ).toArray()[0];
     if (!row) return json({ error: "댓글을 찾지 못했습니다." }, 404);
-    const allowed = await passwordMatches(payload.password, row.pass_salt, row.pass_hash);
+    const allowed = await passwordMatches(payload.password, row.pass_salt, row.pass_hash, this.env?.ADMIN_PASSWORD || "");
     if (!allowed) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       this.ctx.storage.sql.exec(
