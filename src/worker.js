@@ -56,12 +56,12 @@ async function handleGuestbook(request, env, url) {
   if ((request.method === "POST" || request.method === "GET") && path === "/guestbook/lock") return lockGuest();
   if (path === "/guestbook") return serve(request, env, "/guestbook/index.html");
   if (path === "/guestbook/guestbook.js") return env.ASSETS.fetch(request);
-  const match = path.match(/^\/guestbook\/api\/entries(?:\/([A-Za-z0-9-]+))?$/);
+  const match = path.match(/^\/guestbook\/api\/entries(?:\/([A-Za-z0-9-]+)(?:\/(comments|reveal)(?:\/([A-Za-z0-9-]+))?)?)?$/);
   if (!match) return text("페이지를 찾을 수 없습니다.", 404);
-  return guestEntries(request, env, url, match[1] || "");
+  return guestEntries(request, env, url, match[1] || "", match[2] || "", match[3] || "");
 }
 
-async function guestEntries(request, env, url, id) {
+async function guestEntries(request, env, url, id, sub = "", subId = "") {
   if (!env.GUESTBOOK) return json({ error: "방명록 저장소가 아직 연결되지 않았습니다." }, 503);
   const admin = await guestCookieValid(request, env);
   if (request.method !== "GET" && crossSite(request, url)) return text("Forbidden", 403);
@@ -73,13 +73,13 @@ async function guestEntries(request, env, url, id) {
   headers.set("x-idea-ip", ip.split(",")[0].trim());
   const stub = env.GUESTBOOK.get(env.GUESTBOOK.idFromName("guestbook"));
   const query = admin ? "?admin=1" : "";
-  const target = id ? `/entries/${id}${query}` : `/entries${query}`;
+  const target = `/entries${id ? `/${id}` : ""}${sub ? `/${sub}` : ""}${subId ? `/${subId}` : ""}${query}`;
   const response = await stub.fetch(new Request(`https://guestbook.internal${target}`, {
     method: request.method,
     headers,
     body: request.method === "GET" ? undefined : request.body,
   }));
-  if (request.method !== "GET") return response;
+  if (request.method !== "GET" || id) return response;
   const data = await response.json();
   return json({ entries: data.entries || [], admin });
 }
