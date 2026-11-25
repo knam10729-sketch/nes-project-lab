@@ -27,11 +27,19 @@ const IDEA_MAX_AGE = 60 * 60 * 24 * 30;
 const GUEST_COOKIE = "nes-guest-admin";
 
 // The admin password and the cookie-signing key live in Cloudflare secrets
-// (ADMIN_PASSWORD, COOKIE_SECRET), never in the source. If either is missing,
+// (ADMIN_PASSWORD, IDEA_PASSWORD, COOKIE_SECRET), never in the source. If either is missing,
 // every admin check fails closed.
 function adminPasswordOk(env, password) {
   const expected = typeof env?.ADMIN_PASSWORD === "string" ? env.ADMIN_PASSWORD : "";
   // Without a signing key a login could never be kept, so refuse it up front.
+  if (!expected || !password || !env?.COOKIE_SECRET) return false;
+  return sameText(password, expected);
+}
+
+// The ideas board has its own numeric password (IDEA_PASSWORD secret), separate from the
+// guestbook admin password. Same rules: needs COOKIE_SECRET, fails closed when unset.
+function ideaPasswordOk(env, password) {
+  const expected = typeof env?.IDEA_PASSWORD === "string" ? env.IDEA_PASSWORD : "";
   if (!expected || !password || !env?.COOKIE_SECRET) return false;
   return sameText(password, expected);
 }
@@ -205,7 +213,7 @@ async function unlockIdeas(request, env, url) {
   } catch {
     password = "";
   }
-  if (!adminPasswordOk(env, password)) {
+  if (!ideaPasswordOk(env, password)) {
     await new Promise((resolve) => setTimeout(resolve, 700));
     return ideaGate(next, true);
   }

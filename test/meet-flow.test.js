@@ -60,7 +60,7 @@ test("websocket pins travel through the live game room", async () => {
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
-    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
+    vars: { ADMIN_PASSWORD: "test-admin-pass", IDEA_PASSWORD: "13579", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });

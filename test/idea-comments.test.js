@@ -41,7 +41,7 @@ test("comments can be posted, listed, and refused while locked", async () => {
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
-    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
+    vars: { ADMIN_PASSWORD: "test-admin-pass", IDEA_PASSWORD: "13579", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });
@@ -53,7 +53,7 @@ test("comments can be posted, listed, and refused while locked", async () => {
       method: "POST",
       redirect: "manual",
       headers: { origin, "content-type": "application/x-www-form-urlencoded" },
-      body: "password=test-admin-pass&next=/ideas/2",
+      body: "password=13579&next=/ideas/2",
     });
     const cookie = opened.headers.get("set-cookie").split(";")[0];
     const headers = { origin, cookie, "content-type": "application/json" };

@@ -114,6 +114,7 @@ function ideaEnv() {
     seen,
     env: {
       ADMIN_PASSWORD: "test-admin-pass",
+      IDEA_PASSWORD: "13579",
       COOKIE_SECRET: "test-cookie-secret",
       ASSETS: {
         async fetch(request) {
@@ -155,10 +156,18 @@ test("ideas stay locked until the password cookie is valid", async () => {
   assert.match(wrongPage, /shake/);
   assert.equal(wrong.headers.get("set-cookie"), null);
 
-  const opened = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
+  const adminOnly = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
     method: "POST",
     headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
     body: "password=test-admin-pass&next=/ideas/1",
+  }), env);
+  assert.equal(adminOnly.status, 401);
+  assert.equal(adminOnly.headers.get("set-cookie"), null);
+
+  const opened = await handler.fetch(new Request("https://jeonghan.kr/ideas/unlock", {
+    method: "POST",
+    headers: { origin: "https://jeonghan.kr", "content-type": "application/x-www-form-urlencoded" },
+    body: "password=13579&next=/ideas/1",
   }), env);
   assert.equal(opened.status, 302);
   assert.equal(opened.headers.get("location"), "/ideas/1");
@@ -188,8 +197,8 @@ test("admin unlock fails closed when the secrets are missing", async () => {
     body,
   });
   const noPassword = ideaEnv().env;
-  delete noPassword.ADMIN_PASSWORD;
-  const ideas = await handler.fetch(post("/ideas/unlock", "password=test-admin-pass&next=/ideas/1"), noPassword);
+  delete noPassword.IDEA_PASSWORD;
+  const ideas = await handler.fetch(post("/ideas/unlock", "password=13579&next=/ideas/1"), noPassword);
   assert.equal(ideas.status, 401);
   assert.equal(ideas.headers.get("set-cookie"), null);
   const noKey = ideaEnv().env;
@@ -197,4 +206,10 @@ test("admin unlock fails closed when the secrets are missing", async () => {
   const guest = await handler.fetch(post("/guestbook/unlock", "password=test-admin-pass"), noKey);
   assert.equal(guest.status, 401);
   assert.equal(guest.headers.get("set-cookie"), null);
+  const ideasNoKey = await handler.fetch(post("/ideas/unlock", "password=13579&next=/ideas/1"), noKey);
+  assert.equal(ideasNoKey.status, 401);
+  assert.equal(ideasNoKey.headers.get("set-cookie"), null);
+  // The ideas number does not open the guestbook admin.
+  const crossed = await handler.fetch(post("/guestbook/unlock", "password=13579"), ideaEnv().env);
+  assert.equal(crossed.status, 401);
 });

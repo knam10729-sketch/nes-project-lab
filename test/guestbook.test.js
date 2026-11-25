@@ -33,7 +33,7 @@ test("the guestbook API never returns a private body without the admin cookie", 
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
-    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
+    vars: { ADMIN_PASSWORD: "test-admin-pass", IDEA_PASSWORD: "13579", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });
@@ -88,7 +88,7 @@ test("secret posts open with their own password and comments follow the entry's 
   const { unstable_dev } = await import("wrangler");
   const worker = await unstable_dev("src/index.js", {
     config: "wrangler.games.jsonc",
-    vars: { ADMIN_PASSWORD: "test-admin-pass", COOKIE_SECRET: "test-cookie-secret" },
+    vars: { ADMIN_PASSWORD: "test-admin-pass", IDEA_PASSWORD: "13579", COOKIE_SECRET: "test-cookie-secret" },
     experimental: { disableExperimentalWarning: true },
     ip: "127.0.0.1",
   });
