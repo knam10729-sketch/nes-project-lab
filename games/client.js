@@ -1,8 +1,8 @@
-import { lockPlay, playLocked, playScrolls } from "./fit.js";
-import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js";
-import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js";
-import { drawQr } from "./qr.js";
-import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade, SOLO_ALONE, tickArcade } from "./arcade/view.js";
+import { lockPlay, playLocked, playScrolls } from "./fit.js?v=20261126-2";
+import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js?v=20261126-2";
+import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js?v=20261126-2";
+import { drawQr } from "./qr.js?v=20261126-2";
+import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade, SOLO_ALONE, tickArcade } from "./arcade/view.js?v=20261126-2";
 
 const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
 const META = {

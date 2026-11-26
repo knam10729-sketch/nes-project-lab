@@ -1,8 +1,8 @@
 // Single-player puzzles: 2048, 스도쿠, 눈도장, 붓길. Everything runs in the browser.
-import * as g2048 from "./g2048.js";
-import * as dice from "./dice.js";
-import * as path from "./path.js";
-import * as sudoku from "./sudoku.js";
+import * as g2048 from "./g2048.js?v=20261126-2";
+import * as dice from "./dice.js?v=20261126-2";
+import * as path from "./path.js?v=20261126-2";
+import * as sudoku from "./sudoku.js?v=20261126-2";
 
 const META = {
   2048: ["2048", "밀어서 같은 숫자를 합칩니다. 2048 타일을 만들어 보세요. 화면을 밀거나 방향키를 쓰세요."],
