@@ -2,6 +2,7 @@ import { lockPlay, playLocked, playScrolls } from "./fit.js";
 import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js";
 import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js";
 import { drawQr } from "./qr.js";
+import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade } from "./arcade/view.js";
 
 const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
 const META = {
@@ -13,6 +14,7 @@ const META = {
   liar: ["라이어 게임", "3명에서 5명. 한 사람만 단어를 모릅니다. 힌트를 주고 라이어를 찾으세요."],
   draw: ["그림 맞히기", "2명에서 5명이 번갈아 그립니다. 먼저, 그리고 빠르게 맞힐수록 점수가 오릅니다."],
   mafia: ["마피아", "4명에서 10명. 밤에는 역할을 숨기고, 낮에는 이야기한 뒤 투표합니다. 역할은 서버만 알고 있습니다."],
+  ...ARCADE_META,
 };
 
 const REASONS = {
@@ -121,7 +123,7 @@ function mountSetup() {
       times.append(choice);
     }
   }
-  const solo = el("button", { type: "button", id: "solo", text: "혼자서 봇과 하기" });
+  const solo = el("button", { type: "button", id: "solo", text: game === "balloon" || game === "memory" ? "혼자 하기" : "혼자서 봇과 하기" });
   const extra = () => ({
     difficulty: difficulty.value,
     category: category?.value || "food",
@@ -138,7 +140,8 @@ function mountSetup() {
       solo.disabled = false;
     }
   });
-  if (game === "mafia") form.append(label, input, button, el("p", { className: "copy", text: "4명 이상이 링크로 들어온 뒤 방장이 시작합니다. 같은 자리에 모여 낮에는 소리 내어 이야기하세요." }), note);
+  if (game === "balloon" || game === "memory") form.append(label, input, button, el("p", { className: "copy", text: "링크를 보내 친구를 부르거나, 혼자 바로 시작할 수 있습니다." }), solo, note);
+  else if (game === "mafia") form.append(label, input, button, el("p", { className: "copy", text: "4명 이상이 링크로 들어온 뒤 방장이 시작합니다. 같은 자리에 모여 낮에는 소리 내어 이야기하세요." }), note);
   else form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -277,6 +280,7 @@ function connect() {
     if (message.type === "error") {
       setNote(message.error);
       latest?.position?.active?.forEach((mole) => { delete mole.sent; });
+      if (ARCADE_GAMES.has(latest?.game)) arcadeError();
       paintMoleHoles();
     }
   });
@@ -317,14 +321,17 @@ function render(state) {
     if (state.game === "mafia" && state.position.alive && state.position.alive[index] === false) item.classList.add("out");
     const dot = el("i");
     dot.className = seat.connected ? "on" : "off";
-    const score = state.game === "mole" ? ` ${state.position.scores?.[index] ?? 0}점` : "";
+    const score = state.game === "mole" ? ` ${state.position.scores?.[index] ?? 0}점` : ARCADE_GAMES.has(state.game) ? arcadeScore(state, index) : "";
     item.append(dot, document.createTextNode(`${seat.name} · ${labelColor(seat.color)}${score}`));
     item.title = seat.connected ? "연결됨" : "연결이 끊김";
     players.append(item);
   });
   hud.append(players);
   syncQr(state);
-  if (PARTY.has(state.game)) {
+  if (ARCADE_GAMES.has(state.game)) {
+    document.getElementById("clock").hidden = state.game !== "balloon" || state.status !== "playing";
+    renderArcade({ state, secret, mySeat, send, serverNow });
+  } else if (PARTY.has(state.game)) {
     renderParty({ state, secret, mySeat, send });
   } else {
     renderScore(state);
@@ -626,6 +633,20 @@ function tickClock() {
       }
     }
   }
+  if (state?.game === "balloon" && bar && state.status === "playing" && state.position.startedAt) {
+    const now = serverNow();
+    const counting = state.position.phase === "countdown";
+    const left = counting ? state.position.startedAt - now : state.position.endsAt - now;
+    bar.style.width = `${counting ? 100 : Math.max(0, Math.min(1, left / (state.position.duration || 45000))) * 100}%`;
+    const turn = document.getElementById("turn");
+    if (turn) turn.textContent = counting ? `${Math.max(1, Math.ceil(left / 1000))}초 뒤 시작` : `${arcadeTurn(state, mySeat, secret)} · ${Math.max(0, Math.ceil(left / 1000))}초`;
+    paintBalloons();
+    if (!counting && left < -200 && !syncedEnd) {
+      syncedEnd = true;
+      send({ type: "sync" });
+    }
+    if (counting) syncedEnd = false;
+  }
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
     const left = state.position.endsAt - serverNow();
     bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 80000))) * 100}%`;
@@ -640,6 +661,7 @@ function tickClock() {
 }
 
 function turnText(state) {
+  if (ARCADE_GAMES.has(state.game)) return arcadeTurn(state, mySeat, secret);
   if (PARTY.has(state.game)) return partyTurn(state, mySeat, secret);
   if (state.game === "mole") {
     if (state.position.phase === "waiting") return mySeat === 0 ? "준비되면 시작을 누르세요" : "방장을 기다리는 중";

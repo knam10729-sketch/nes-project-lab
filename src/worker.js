@@ -4,7 +4,9 @@ import { ideaById } from "../ideas/data.js";
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
 const PREFIX = "/calendar-app";
 const COOKIE_PREFIX = "nescal_";
-const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet", "mafia"]);
+const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet", "mafia", "balloon", "memory", "bingo", "duel", "flash"]);
+// Single-player puzzles that run entirely in the browser.
+const PUZZLES = new Set(["2048", "sudoku", "dice", "path"]);
 const ROOM = /^[a-z2-9]{8}$/;
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -364,12 +366,15 @@ async function handleGames(request, env, url) {
   if (path === "/games/meet" || path === "/games/meet/") return serve(request, env, "/games/meet.html");
   if (/^\/games\/meet\/[a-z2-9]{8}\/?$/.test(path)) return serve(request, env, "/games/meet.html");
   if (path.startsWith("/games/vendor/leaflet/") || path.startsWith("/games/pieces/")) return env.ASSETS.fetch(request);
+  if (/^\/games\/(arcade|puzzles)\/[a-z0-9-]+\.js$/.test(path)) return env.ASSETS.fetch(request);
+  const puzzle = path.match(/^\/games\/([a-z0-9]+)\/?$/);
+  if (puzzle && PUZZLES.has(puzzle[1])) return serve(request, env, "/games/puzzle.html");
   if ([
     "/games/play.html", "/games/client.js", "/games/party.js", "/games/qr.js", "/games/fit.js", "/games/mole-view.js",
     "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/locate.js", "/games/map-view.js",
     "/games/neighborhoods.js", "/games/fortune-text.js", "/games/vendor/qrcode.js", "/games/games.css",
   ].includes(path)) return env.ASSETS.fetch(request);
-  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw|mafia)(?:\/([a-z2-9]{8}))?\/?$/);
+  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw|mafia|balloon|memory|bingo|duel|flash)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);
 }
