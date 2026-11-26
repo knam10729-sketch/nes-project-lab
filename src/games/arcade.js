@@ -6,6 +6,11 @@ import * as bingo from "./bingo.js";
 import * as duel from "./duel.js";
 import * as flash from "./flash.js";
 import * as memory from "./memory.js";
+import * as chosung from "./chosung.js";
+import * as ladder from "./ladder.js";
+import * as nunchi from "./nunchi.js";
+import * as othello from "./othello.js";
+import * as pirate from "./pirate.js";
 
 export const ARCADE = {
   balloon: { mod: balloon, name: "풍선 터뜨리기", max: 4, min: 1, soloBots: 0 },
@@ -13,6 +18,11 @@ export const ARCADE = {
   bingo: { mod: bingo, name: "빙고", max: 4, min: 2, soloBots: 1 },
   duel: { mod: duel, name: "수싸움", max: 2, min: 2, soloBots: 1 },
   flash: { mod: flash, name: "찰나", max: 4, min: 2, soloBots: 1 },
+  ladder: { mod: ladder, name: "사다리타기", max: 8, min: 2, soloBots: 0, soloWaits: true },
+  nunchi: { mod: nunchi, name: "눈치게임", max: 8, min: 2, soloBots: 3 },
+  pirate: { mod: pirate, name: "해적 룰렛", max: 6, min: 2, soloBots: 2 },
+  chosung: { mod: chosung, name: "초성퀴즈", max: 8, min: 1, soloBots: 0 },
+  othello: { mod: othello, name: "오셀로", max: 2, min: 2, soloBots: 1, autoStart: true },
 };
 
 export function isArcade(game) {
@@ -31,6 +41,10 @@ const ERRORS = {
   benched: "이번 판은 쉬어야 합니다.",
   bounds: "고를 수 없는 칸입니다.",
   seat: "참가 중인 자리가 없습니다.",
+  done: "이미 숫자를 외쳤습니다.",
+  illegal: "둘 수 없는 자리입니다.",
+  empty: "답을 입력해 주세요.",
+  lanes: "이름을 2개 이상 적어 주세요.",
 };
 
 export function arcadeError(code) {

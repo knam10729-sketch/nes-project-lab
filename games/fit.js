@@ -1,4 +1,4 @@
-const SCROLL_GAMES = new Set(["draw", "liar"]);
+const SCROLL_GAMES = new Set(["draw", "liar", "chosung", "ladder"]);
 
 export function playLocked(status, game) {
   if (status !== "playing") return false;

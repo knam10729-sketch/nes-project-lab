@@ -2,7 +2,7 @@ import { lockPlay, playLocked, playScrolls } from "./fit.js";
 import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js";
 import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js";
 import { drawQr } from "./qr.js";
-import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade } from "./arcade/view.js";
+import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade, SOLO_ALONE, tickArcade } from "./arcade/view.js";
 
 const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
 const META = {
@@ -123,7 +123,7 @@ function mountSetup() {
       times.append(choice);
     }
   }
-  const solo = el("button", { type: "button", id: "solo", text: game === "balloon" || game === "memory" ? "혼자 하기" : "혼자서 봇과 하기" });
+  const solo = el("button", { type: "button", id: "solo", text: game === "ladder" ? "한 화면에서 하기" : SOLO_ALONE.has(game) ? "혼자 하기" : "혼자서 봇과 하기" });
   const extra = () => ({
     difficulty: difficulty.value,
     category: category?.value || "food",
@@ -140,7 +140,7 @@ function mountSetup() {
       solo.disabled = false;
     }
   });
-  if (game === "balloon" || game === "memory") form.append(label, input, button, el("p", { className: "copy", text: "링크를 보내 친구를 부르거나, 혼자 바로 시작할 수 있습니다." }), solo, note);
+  if (SOLO_ALONE.has(game)) form.append(label, input, button, el("p", { className: "copy", text: game === "ladder" ? "링크로 모이거나, 휴대폰 하나로 이름을 적어 바로 할 수 있습니다." : "링크를 보내 친구를 부르거나, 혼자 바로 시작할 수 있습니다." }), solo, note);
   else if (game === "mafia") form.append(label, input, button, el("p", { className: "copy", text: "4명 이상이 링크로 들어온 뒤 방장이 시작합니다. 같은 자리에 모여 낮에는 소리 내어 이야기하세요." }), note);
   else form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
@@ -647,6 +647,7 @@ function tickClock() {
     }
     if (counting) syncedEnd = false;
   }
+  if (ARCADE_GAMES.has(state?.game)) tickArcade(state, serverNow());
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
     const left = state.position.endsAt - serverNow();
     bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 80000))) * 100}%`;

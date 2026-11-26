@@ -26,6 +26,11 @@ export const GAMES = {
   bingo: { max: 4, min: 2, name: "빙고" },
   duel: { max: 2, min: 2, name: "수싸움" },
   flash: { max: 4, min: 2, name: "찰나" },
+  ladder: { max: 8, min: 2, name: "사다리타기" },
+  nunchi: { max: 8, min: 2, name: "눈치게임" },
+  pirate: { max: 6, min: 2, name: "해적 룰렛" },
+  chosung: { max: 8, min: 1, name: "초성퀴즈" },
+  othello: { max: 2, min: 2, name: "오셀로" },
 };
 
 const PARTY = new Set(["mole", "yut", "liar", "draw", "mafia"]);
@@ -96,6 +101,8 @@ export function joinRoom(room, { name, token, newToken }) {
   const next = clone(room);
   next.seats.push({ name: cleanName(name), token: newToken });
   if (!PARTY.has(next.game) && !isArcade(next.game) && next.status === "waiting") next.status = "playing";
+  // Two-player arcade board games (오셀로) start by themselves once the second player sits down.
+  if (isArcade(next.game) && ARCADE[next.game].autoStart && next.seats.length >= next.maxSeats && next.status === "waiting") arcadeBegin(next, Date.now());
   return { ok: true, room: next, seat: next.seats.length - 1, token: newToken };
 }
 
@@ -857,7 +864,7 @@ function arcadeSeed() {
   return bytes[0] || 1;
 }
 
-function arcadeBegin(room, now) {
+function arcadeBegin(room, now, options = {}) {
   const entry = ARCADE[room.game];
   const bots = room.seats.map((seat, index) => (seat.bot ? index : -1)).filter((index) => index >= 0);
   const started = entry.mod.start(room.data, {
@@ -866,6 +873,9 @@ function arcadeBegin(room, now) {
     seed: arcadeSeed(),
     bots,
     level: room.difficulty === "normal" ? "normal" : "easy",
+    options,
+    solo: Boolean(room.solo),
+    round: room.round || 1,
   });
   if (!started.ok) return false;
   room.data = started.state;
@@ -874,6 +884,7 @@ function arcadeBegin(room, now) {
   room.draw = false;
   room.reason = null;
   room.botAt = null;
+  syncArcade(room);
   return true;
 }
 
@@ -884,7 +895,8 @@ function startArcadeSolo(room, now, difficulty) {
   for (let index = 0; index < count && room.seats.length < room.maxSeats; index += 1) {
     room.seats.push({ name: BOT_NAMES[index] || `봇 ${index + 1}`, token: randomToken(), bot: true });
   }
-  arcadeBegin(room, now);
+  // 사다리타기 on one phone waits for the host to type the names first.
+  if (!ARCADE[room.game].soloWaits) arcadeBegin(room, now);
 }
 
 function syncArcade(room) {
@@ -924,15 +936,17 @@ function arcadeAction(room, next, seat, action, now) {
     next.draw = false;
     next.reason = null;
     next.data = mod.initial();
-    if (next.solo) arcadeBegin(next, now);
+    const entry = ARCADE[next.game];
+    if ((next.solo && !entry.soloWaits) || (entry.autoStart && next.seats.length >= next.maxSeats)) arcadeBegin(next, now);
     return { ok: true, room: next, changed: true };
   }
   if (action.type === "start") {
     if (seat !== 0) return stopped("방장만 시작할 수 있습니다.", next, changed);
     if (next.status !== "waiting") return stopped("이미 진행 중입니다.", next, changed);
     const min = GAMES[next.game].min || 1;
-    if (next.seats.length < min) return stopped(`시작하려면 ${min}명 이상이 필요합니다.`, next, changed);
-    if (!arcadeBegin(next, now)) return stopped("시작할 수 없습니다.", next, changed);
+    if (next.seats.length < min && !(next.solo && ARCADE[next.game].soloWaits)) return stopped(`시작하려면 ${min}명 이상이 필요합니다.`, next, changed);
+    const options = { results: action.results, names: action.names, category: action.category };
+    if (!arcadeBegin(next, now, options)) return stopped(next.game === "ladder" ? arcadeError("lanes") : "시작할 수 없습니다.", next, changed);
     return { ok: true, room: next, changed: true };
   }
   if (next.status !== "playing") return stopped(next.status === "over" ? "게임이 끝났습니다." : "방장이 시작하기 전입니다.", next, changed);

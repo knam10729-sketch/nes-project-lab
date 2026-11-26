@@ -4,7 +4,7 @@ import { ideaById } from "../ideas/data.js";
 const UPSTREAM = "https://shared-calendar-4pu.pages.dev";
 const PREFIX = "/calendar-app";
 const COOKIE_PREFIX = "nescal_";
-const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet", "mafia", "balloon", "memory", "bingo", "duel", "flash"]);
+const GAMES = new Set(["gomoku", "chess", "janggi", "mole", "yut", "liar", "draw", "meet", "mafia", "balloon", "memory", "bingo", "duel", "flash", "ladder", "nunchi", "pirate", "chosung", "othello"]);
 // Single-player puzzles that run entirely in the browser.
 const PUZZLES = new Set(["2048", "sudoku", "dice", "path"]);
 const ROOM = /^[a-z2-9]{8}$/;
@@ -374,7 +374,7 @@ async function handleGames(request, env, url) {
     "/games/geo.js", "/games/meet.js", "/games/fortune.js", "/games/locate.js", "/games/map-view.js",
     "/games/neighborhoods.js", "/games/fortune-text.js", "/games/vendor/qrcode.js", "/games/games.css",
   ].includes(path)) return env.ASSETS.fetch(request);
-  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw|mafia|balloon|memory|bingo|duel|flash)(?:\/([a-z2-9]{8}))?\/?$/);
+  const match = path.match(/^\/games\/(gomoku|chess|janggi|mole|yut|liar|draw|mafia|balloon|memory|bingo|duel|flash|ladder|nunchi|pirate|chosung|othello)(?:\/([a-z2-9]{8}))?\/?$/);
   if (match) return serve(request, env, "/games/play.html");
   return text("페이지를 찾을 수 없습니다.", 404);
 }
