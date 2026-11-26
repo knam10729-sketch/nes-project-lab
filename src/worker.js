@@ -142,7 +142,8 @@ async function handleIdeas(request, env, url) {
   if (!(await ideaCookieValid(request, env))) return ideaLocked(request, path);
   if (path === "/ideas") return privateAsset(request, env, "/ideas/index.html");
   if (/^\/ideas\/\d+$/.test(path)) return privateAsset(request, env, "/ideas/detail.html");
-  if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/comments.js", "/ideas/comment-text.js", "/ideas/ideas.css"].includes(path)) {
+  if (path === "/ideas/player") return privateAsset(request, env, "/ideas/player.html");
+  if (path.startsWith("/ideas/img/") || ["/ideas/data.js", "/ideas/board.js", "/ideas/detail.js", "/ideas/comments.js", "/ideas/comment-text.js", "/ideas/player.js", "/ideas/ideas.css"].includes(path)) {
     return privateAsset(request, env);
   }
   return text("페이지를 찾을 수 없습니다.", 404);
@@ -250,7 +251,7 @@ async function ideaLocked(request, path) {
 }
 
 function ideaPage(path) {
-  return path === "/ideas" || /^\/ideas\/\d+$/.test(path);
+  return path === "/ideas" || path === "/ideas/player" || /^\/ideas\/\d+$/.test(path);
 }
 
 function acceptsHtml(request) {
