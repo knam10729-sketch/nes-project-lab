@@ -1,7 +1,10 @@
-import { applyInk, partyTurn, remember, renderParty } from "./party.js";
-import { drawQr } from "./qr.js";
+import { lockPlay, playLocked, playScrolls } from "./fit.js?v=20261126-2";
+import { BONK_MS, labelForHole, noteServerWhacks } from "./mole-view.js?v=20261126-2";
+import { applyInk, CATS, partyTurn, remember, renderParty } from "./party.js?v=20261126-2";
+import { drawQr } from "./qr.js?v=20261126-2";
+import { ARCADE_GAMES, ARCADE_META, arcadeError, arcadeScore, arcadeTurn, paintBalloons, renderArcade, SOLO_ALONE, tickArcade } from "./arcade/view.js?v=20261126-2";
 
-const PARTY = new Set(["yut", "liar", "draw"]);
+const PARTY = new Set(["yut", "liar", "draw", "mafia"]);
 const META = {
   gomoku: ["오목", "15줄 판에서 번갈아 둡니다. 가로, 세로, 대각선으로 다섯 칸 이상 이어지면 이깁니다."],
   chess: ["체스", "캐슬링, 앙파상, 프로모션, 체크, 체크메이트, 스테일메이트까지 정식 규칙으로 둡니다."],
@@ -10,6 +13,8 @@ const META = {
   yut: ["윷놀이", "2명에서 4명. 윷을 던져 말을 움직이고, 업기, 잡기, 지름길을 서버가 판정합니다."],
   liar: ["라이어 게임", "3명에서 5명. 한 사람만 단어를 모릅니다. 힌트를 주고 라이어를 찾으세요."],
   draw: ["그림 맞히기", "2명에서 5명이 번갈아 그립니다. 먼저, 그리고 빠르게 맞힐수록 점수가 오릅니다."],
+  mafia: ["마피아", "4명에서 10명. 밤에는 역할을 숨기고, 낮에는 이야기한 뒤 투표합니다. 역할은 서버만 알고 있습니다."],
+  ...ARCADE_META,
 };
 
 const REASONS = {
@@ -46,6 +51,10 @@ let skew = 0;
 let secret = null;
 let syncedEnd = false;
 let frame = 0;
+let molePops = [];
+let swungMoles = new Set();
+const moleBonks = new Map();
+const seenWhacks = new Set();
 
 if (!meta) {
   app.append(el("p", { className: "lead", text: "없는 게임입니다." }), linkHome());
@@ -93,31 +102,53 @@ function mountSetup() {
   if (game === "liar") {
     category = document.createElement("select");
     category.id = "setup-category";
-    for (const [id, labelText] of [["food", "음식"], ["animal", "동물"], ["place", "장소"], ["job", "직업"], ["thing", "물건"], ["show", "영화·드라마"]]) {
+    for (const [id, labelText] of CATS) {
       const option = document.createElement("option");
       option.value = id;
       option.textContent = labelText;
       category.append(option);
     }
   }
-  const solo = el("button", { type: "button", id: "solo", text: "혼자서 봇과 하기" });
+  const limits = game === "mole" ? [30, 60, 90, 120] : game === "draw" ? [40, 60, 80, 100, 120] : null;
+  const chosen = { seconds: game === "draw" ? 80 : 60 };
+  const times = el("div", { className: "times", id: "setup-times" });
+  if (limits) {
+    times.append(el("p", { className: "muted", text: game === "mole" ? "제한 시간" : "그리는 시간" }));
+    for (const value of limits) {
+      const choice = el("button", { type: "button", className: value === chosen.seconds ? "primary" : "", text: `${value}초` });
+      choice.addEventListener("click", () => {
+        chosen.seconds = value;
+        times.querySelectorAll("button").forEach((item) => item.classList.toggle("primary", item === choice));
+      });
+      times.append(choice);
+    }
+  }
+  const solo = el("button", { type: "button", id: "solo", text: game === "ladder" ? "한 화면에서 하기" : SOLO_ALONE.has(game) ? "혼자 하기" : "혼자서 봇과 하기" });
+  const extra = () => ({
+    difficulty: difficulty.value,
+    category: category?.value || "food",
+    moleSeconds: game === "mole" ? chosen.seconds : undefined,
+    drawSeconds: game === "draw" ? chosen.seconds : undefined,
+  });
   solo.addEventListener("click", async () => {
     solo.disabled = true;
     note.textContent = "봇과 방을 만드는 중";
     try {
-      await createAndEnter(input.value, { solo: true, difficulty: difficulty.value, category: category?.value || "food" });
+      await createAndEnter(input.value, { solo: true, ...extra() });
     } catch (error) {
       note.textContent = error.message;
       solo.disabled = false;
     }
   });
-  form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(category ? [category] : []), solo, note);
+  if (SOLO_ALONE.has(game)) form.append(label, input, button, el("p", { className: "copy", text: game === "ladder" ? "링크로 모이거나, 휴대폰 하나로 이름을 적어 바로 할 수 있습니다." : "링크를 보내 친구를 부르거나, 혼자 바로 시작할 수 있습니다." }), solo, note);
+  else if (game === "mafia") form.append(label, input, button, el("p", { className: "copy", text: "4명 이상이 링크로 들어온 뒤 방장이 시작합니다. 같은 자리에 모여 낮에는 소리 내어 이야기하세요." }), note);
+  else form.append(label, input, button, el("p", { className: "copy", text: "혼자라면 난이도를 고르고 봇과 둘 수 있습니다." }), diff, ...(limits ? [times] : []), ...(category ? [category] : []), solo, note);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     button.disabled = true;
     note.textContent = "방을 만드는 중";
     try {
-      await createAndEnter(input.value, {});
+      await createAndEnter(input.value, extra());
     } catch (error) {
       note.textContent = error.message;
       button.disabled = false;
@@ -249,6 +280,8 @@ function connect() {
     if (message.type === "error") {
       setNote(message.error);
       latest?.position?.active?.forEach((mole) => { delete mole.sent; });
+      if (ARCADE_GAMES.has(latest?.game)) arcadeError();
+      paintMoleHoles();
     }
   });
   ws.addEventListener("close", () => {
@@ -266,13 +299,14 @@ function connect() {
 
 function render(state) {
   latest = state;
+  lockPlay(playLocked(state.status, state.game), playScrolls(state.game));
   remember(state, mySeat);
   skew = state.now - Date.now();
   if (state.turnSeat !== mySeat) {
     selected = null;
     document.getElementById("promote")?.remove();
   }
-  if (state.position?.phase !== "playing") syncedEnd = false;
+  if (state.game === "mole" && state.position?.phase !== "playing") syncedEnd = false;
   const hud = document.getElementById("hud");
   hud.replaceChildren(
     el("div", {}, [
@@ -284,16 +318,20 @@ function render(state) {
   state.seats.forEach((seat, index) => {
     const item = el("li", { className: index === mySeat ? "me" : "" });
     if (index === state.turnSeat) item.classList.add("current");
+    if (state.game === "mafia" && state.position.alive && state.position.alive[index] === false) item.classList.add("out");
     const dot = el("i");
     dot.className = seat.connected ? "on" : "off";
-    const score = state.game === "mole" ? ` ${state.position.scores?.[index] ?? 0}점` : "";
+    const score = state.game === "mole" ? ` ${state.position.scores?.[index] ?? 0}점` : ARCADE_GAMES.has(state.game) ? arcadeScore(state, index) : "";
     item.append(dot, document.createTextNode(`${seat.name} · ${labelColor(seat.color)}${score}`));
     item.title = seat.connected ? "연결됨" : "연결이 끊김";
     players.append(item);
   });
   hud.append(players);
   syncQr(state);
-  if (PARTY.has(state.game)) {
+  if (ARCADE_GAMES.has(state.game)) {
+    document.getElementById("clock").hidden = state.game !== "balloon" || state.status !== "playing";
+    renderArcade({ state, secret, mySeat, send, serverNow });
+  } else if (PARTY.has(state.game)) {
     renderParty({ state, secret, mySeat, send });
   } else {
     renderScore(state);
@@ -389,7 +427,12 @@ function chessBoard(state, flip) {
       const piece = state.position.board[index];
       if (piece) {
         button.classList.add(piece === piece.toUpperCase() ? "w" : "b");
-        button.append(el("span", { className: "upright", text: CHESS_LETTER[piece.toLowerCase()] }));
+        const art = el("div", { className: "piece-art" });
+        const img = document.createElement("img");
+        img.src = `/games/pieces/${piece === piece.toUpperCase() ? "w" : "b"}${piece.toLowerCase()}.svg`;
+        img.alt = "";
+        art.append(img, el("small", { text: CHESS_LETTER[piece.toLowerCase()] }));
+        button.append(art);
       }
       if (state.position.last?.includes(name)) button.classList.add("last");
       if (selected === name || isLegalChess(state, name)) button.classList.add("mark");
@@ -440,29 +483,89 @@ function openPromotion(choices) {
   document.body.append(dialog);
 }
 
+const HAMMER = `<svg class="hammer" viewBox="0 0 80 80" aria-hidden="true"><rect x="34" y="38" width="8" height="32" rx="4" fill="#e0a15a"/><rect x="36" y="42" width="3" height="24" rx="1.5" fill="#f3d2a2"/><rect x="8" y="14" width="56" height="28" rx="13" fill="#ff4b6e"/><rect x="14" y="18" width="24" height="8" rx="4" fill="#ffd0dc"/><circle cx="50" cy="28" r="4" fill="#ffe4ea"/></svg><span class="stars"><i></i><i></i><i></i></span>`;
+
 function renderMole(state) {
   const wrap = document.getElementById("board-wrap");
   let board = document.getElementById("board");
   if (!board || !board.classList.contains("moles")) {
     board = el("div", { className: "moles board", id: "board" });
     for (let hole = 0; hole < 9; hole += 1) {
+      const pit = el("div", { className: "pit" });
+      pit.dataset.hole = String(hole);
       const button = el("button", { className: "hole", type: "button" });
-      button.dataset.hole = String(hole);
       button.setAttribute("aria-label", `${hole + 1}번 구멍`);
-      button.append(el("span", { className: "mole", "aria-hidden": "true" }, [el("i"), el("i")]));
+      button.append(el("span", { className: "mole-clip" }, [
+        el("span", { className: "mole", "aria-hidden": "true" }, [
+          el("i"),
+          el("i"),
+          el("span", { className: "dizzy", "aria-hidden": "true" }, [el("b"), el("b")]),
+        ]),
+      ]));
+      const fx = el("span", { className: "hit-fx", "aria-hidden": "true" });
+      fx.innerHTML = HAMMER;
+      pit.append(button, fx, el("span", { className: "whack-pop", hidden: true }));
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         const active = latest?.position.active?.find((mole) => mole.hole === hole && serverNow() <= mole.expiresAt);
         if (!active || active.sent) return;
         active.sent = true;
+        swungMoles.add(active.id);
         send({ type: "hit", moleId: active.id });
       });
-      board.append(button);
+      board.append(pit);
     }
     wrap.replaceChildren(board);
   }
-  const holes = new Set((state.position.active || []).filter((mole) => mole.expiresAt > serverNow()).map((mole) => mole.hole));
-  board.querySelectorAll(".hole").forEach((hole) => hole.classList.toggle("up", holes.has(Number(hole.dataset.hole))));
+  if (state.position?.phase === "waiting" || state.position?.phase === "countdown") {
+    swungMoles = new Set();
+    molePops = [];
+    seenWhacks.clear();
+  }
+  const names = (seat) => state.seats[seat]?.name || "누군가";
+  const before = new Set(molePops.map((pop) => pop.key));
+  molePops = noteServerWhacks(molePops, state.position.whacks, {
+    mySeat,
+    swung: swungMoles,
+    nameOf: names,
+    now: Date.now(),
+    serverNow: serverNow(),
+  });
+  for (const pop of molePops) {
+    if (before.has(pop.key) || seenWhacks.has(pop.key)) continue;
+    seenWhacks.add(pop.key);
+    if (pop.seat === mySeat && !pop.late) moleBonks.set(pop.hole, { until: Date.now() + BONK_MS, local: false });
+  }
+  paintMoleHoles();
+  let log = document.getElementById("whack-log");
+  if (!log) {
+    log = el("p", { className: "whack-log", id: "whack-log" });
+    wrap.append(log);
+  }
+  log.textContent = (state.position.whacks || []).slice(-3).map((item) => `${state.seats[item.seat]?.name || "누군가"} +1`).join(" · ");
+}
+
+function paintMoleHoles() {
+  const state = latest;
+  const board = document.getElementById("board");
+  if (!state || state.game !== "mole" || !board?.classList.contains("moles")) return;
+  const now = Date.now();
+  const alive = new Set((state.position.active || []).filter((mole) => mole.expiresAt > serverNow()).map((mole) => mole.hole));
+  molePops = molePops.filter((pop) => pop.until > now);
+  board.querySelectorAll(".pit").forEach((pit) => {
+    const index = Number(pit.dataset.hole);
+    const bonk = moleBonks.get(index);
+    const bonking = Boolean(bonk && bonk.until > now);
+    if (bonk && !bonking) moleBonks.delete(index);
+    pit.classList.toggle("bonk", bonking);
+    pit.classList.toggle("up", alive.has(index) || bonking);
+    const pop = pit.querySelector(".whack-pop");
+    const name = labelForHole(molePops, index, now);
+    if (!pop) return;
+    pop.hidden = !name;
+    pop.classList.toggle("late", Boolean(name && name.includes("먼저")));
+    if (name) pop.textContent = name;
+  });
 }
 
 function renderScore(state) {
@@ -486,8 +589,9 @@ function renderScore(state) {
 function renderActions(state) {
   const box = document.getElementById("actions");
   box.replaceChildren();
-  if (state.game === "mole" && state.position.phase === "waiting" && mySeat === 0) {
-    box.append(action("시작", "start", () => send({ type: "start" })));
+  if (state.game === "mole" && state.position.phase === "waiting") {
+    box.append(timeChoices(state, "mole"));
+    if (mySeat === 0) box.append(action("시작", "start", () => send({ type: "start" })));
   }
   if (state.canPass && state.turnSeat === mySeat) box.append(action("한수쉼", "pass", () => send({ type: "pass" })));
   if (state.canClaimDraw && state.turnSeat === mySeat) box.append(action("빅장 무승부", "claim", () => send({ type: "claimDraw" })));
@@ -508,17 +612,42 @@ function tickClock() {
     const turn = document.getElementById("turn");
     if (turn && state.position.phase === "countdown") turn.textContent = `${Math.max(1, Math.ceil(left / 1000))}초 뒤 시작`;
     if (turn && state.position.phase === "playing") turn.textContent = `남은 시간 ${Math.max(0, Math.ceil(left / 1000))}초`;
-    if (state.position.phase === "playing") {
-      document.querySelectorAll(".hole").forEach((hole) => {
-        const active = state.position.active.some((mole) => mole.hole === Number(hole.dataset.hole) && mole.expiresAt > now);
-        hole.classList.toggle("up", active);
-      });
-    }
+    if (state.position.phase === "playing") paintMoleHoles();
     if (state.position.phase === "playing" && left < -200 && !syncedEnd) {
       syncedEnd = true;
       send({ type: "sync" });
     }
   }
+  if (state?.game === "mafia" && bar) {
+    const clock = document.getElementById("clock");
+    const playing = state.status === "playing" && state.position.endsAt;
+    if (clock) clock.hidden = !playing;
+    if (playing) {
+      const left = state.position.endsAt - serverNow();
+      bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 45000))) * 100}%`;
+      const turn = document.getElementById("turn");
+      if (turn) turn.textContent = `${partyTurn(state, mySeat, secret)} · ${Math.max(0, Math.ceil(left / 1000))}초`;
+      if (left < -200 && syncedEnd !== state.position.endsAt) {
+        syncedEnd = state.position.endsAt;
+        send({ type: "sync" });
+      }
+    }
+  }
+  if (state?.game === "balloon" && bar && state.status === "playing" && state.position.startedAt) {
+    const now = serverNow();
+    const counting = state.position.phase === "countdown";
+    const left = counting ? state.position.startedAt - now : state.position.endsAt - now;
+    bar.style.width = `${counting ? 100 : Math.max(0, Math.min(1, left / (state.position.duration || 45000))) * 100}%`;
+    const turn = document.getElementById("turn");
+    if (turn) turn.textContent = counting ? `${Math.max(1, Math.ceil(left / 1000))}초 뒤 시작` : `${arcadeTurn(state, mySeat, secret)} · ${Math.max(0, Math.ceil(left / 1000))}초`;
+    paintBalloons();
+    if (!counting && left < -200 && !syncedEnd) {
+      syncedEnd = true;
+      send({ type: "sync" });
+    }
+    if (counting) syncedEnd = false;
+  }
+  if (ARCADE_GAMES.has(state?.game)) tickArcade(state, serverNow());
   if (state?.game === "draw" && state.position.phase === "draw" && bar) {
     const left = state.position.endsAt - serverNow();
     bar.style.width = `${Math.max(0, Math.min(1, left / (state.position.duration || 80000))) * 100}%`;
@@ -533,6 +662,7 @@ function tickClock() {
 }
 
 function turnText(state) {
+  if (ARCADE_GAMES.has(state.game)) return arcadeTurn(state, mySeat, secret);
   if (PARTY.has(state.game)) return partyTurn(state, mySeat, secret);
   if (state.game === "mole") {
     if (state.position.phase === "waiting") return mySeat === 0 ? "준비되면 시작을 누르세요" : "방장을 기다리는 중";
@@ -603,6 +733,21 @@ function janggiLines() {
 
 function labelColor(color) {
   return /^\d+$/.test(color) ? `${color}번` : color;
+}
+
+function timeChoices(state, kind) {
+  const box = el("div", { className: "times", id: "times" });
+  const values = kind === "mole" ? [30, 60, 90, 120] : [40, 60, 80, 100, 120];
+  const current = kind === "mole" ? state.time?.moleSeconds : state.time?.drawSeconds;
+  box.append(el("p", { className: "muted", text: `${kind === "mole" ? "제한 시간" : "그리는 시간"} ${current}초` }));
+  if (mySeat === 0 && state.status === "waiting") {
+    for (const value of values) {
+      const button = el("button", { type: "button", className: value === current ? "primary" : "", text: `${value}초` });
+      button.addEventListener("click", () => send({ type: "settings", seconds: value }));
+      box.append(button);
+    }
+  }
+  return box;
 }
 
 function action(text, id, onClick, className = "") {

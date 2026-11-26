@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<meta name="referrer" content="no-referrer">
+<title>영상 플레이어 | 정한.kr</title>
+<meta name="description" content="주소를 넣어 영상을 보는 플레이어">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/games/games.css">
+<link rel="stylesheet" href="/ideas/ideas.css">
+<script src="/theme.js" defer></script>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils">유틸리티</a><a href="/guestbook">방명록</a><a href="/ideas" aria-current="page">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
+<main class="idea-wrap player-wrap">
+<a class="back-link" href="/ideas">← 아이디어 보드</a>
+<p class="eyebrow">VIDEO PLAYER</p>
+<h1>영상 플레이어</h1>
+<p class="copy">영상 주소를 넣고 재생을 누르면 아래 화면에서 열립니다.</p>
+<form id="playerForm" class="player-form" novalidate>
+<label for="videoUrl" class="sr-only">영상 주소</label>
+<input id="videoUrl" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://..." required>
+<div class="player-actions">
+<button id="playBtn" type="submit" class="play-btn">재생</button>
+<button id="clearBtn" type="button" class="clear-btn">지우기</button>
+</div>
+</form>
+<p id="playerMsg" class="player-msg" role="status" aria-live="polite"></p>
+<div class="player-frame">
+<div id="playerEmpty" class="player-empty"><span aria-hidden="true">▶</span><p>주소를 넣으면 여기서 재생됩니다</p></div>
+<iframe id="playerFrame" title="영상" hidden allowfullscreen referrerpolicy="no-referrer" allow="fullscreen; autoplay; picture-in-picture"></iframe>
+</div>
+<p class="caption">일부 사이트는 다른 사이트 안에서 재생(외부 임베드)을 막아 두어 화면이 비거나 오류가 날 수 있습니다. 마지막으로 넣은 주소는 이 브라우저에만 저장되며, 지우기를 누르면 함께 지워집니다.</p>
+</main>
+<footer class="wrap">© <span id="year"></span> 정한.kr</footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+<script src="/ideas/player.js" type="module"></script>
+</body>
+</html>

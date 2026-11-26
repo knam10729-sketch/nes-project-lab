@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>방명록 | 정한.kr</title>
+<meta name="description" content="정한.kr 방명록">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nes-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}</script>
+<link rel="stylesheet" href="/theme.css?v=20261111-yt">
+<link rel="stylesheet" href="/games/games.css">
+<style>
+.gb{max-width:720px}
+.gb-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+.gb-head h1{font-size:clamp(28px,5vw,36px);margin:6px 0 0}
+.gb-head .eyebrow{margin:0}
+.gb-count{color:var(--muted);font-size:14px;white-space:nowrap}
+.gb-count b{color:var(--ink)}
+.gb-intro{color:var(--muted);font-size:14px;line-height:1.7;margin:14px 0 16px}
+.gb-write{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.gb-write:focus-within{border-color:var(--strong-line)}
+.gb-write textarea{display:block;width:100%;box-sizing:border-box;min-height:96px;resize:vertical;border:0;background:transparent;color:var(--ink);padding:14px 16px;font:inherit;font-size:16px;line-height:1.6;outline:none}
+.gb-write textarea::placeholder,.gb-write input::placeholder{color:var(--muted)}
+.gb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface-alt)}
+.gb-bar input[type=text],.gb-bar input[type=password]{flex:0 1 150px;min-width:0;min-height:38px;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;background:var(--page);color:var(--ink);padding:6px 10px;font:inherit;font-size:15px}
+.gb-secret{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;min-height:38px}
+.gb-secret input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.gb-len{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.gb-submit{min-height:38px;padding:7px 18px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.gb-submit:disabled{opacity:.5;cursor:default}
+.gb-note{min-height:1.3em;margin:8px 2px 0;font-size:13px;color:var(--muted)}
+.gb-list{list-style:none;margin:22px 0 0;padding:0;border-top:1px solid var(--line)}
+.gb-item{display:flex;gap:12px;padding:18px 4px;border-bottom:1px solid var(--line)}
+.gb-item.is-new{animation:gbIn .5s ease}
+@keyframes gbIn{from{background:var(--surface-alt)}to{background:transparent}}
+.gb-avatar{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--surface-alt);border:1px solid var(--line);color:var(--ink);font-weight:800;font-size:15px}
+.gb-main{flex:1;min-width:0}
+.gb-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+.gb-name{font-weight:800;font-size:15px;color:var(--ink)}
+.gb-date{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.gb-lock{font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.gb-actions{margin-left:auto;display:inline-flex;align-items:center;gap:2px}
+.gb-del,.gb-act{background:none;border:0;padding:2px 4px;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.gb-del:hover,.gb-act:hover{color:var(--ink)}
+.gb-act{text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;min-height:28px}
+.gb-act[aria-expanded=true]{color:var(--ink);border-color:var(--strong-line);background:var(--surface-alt)}
+.gb-act b{font-weight:800;color:var(--ink);margin-left:3px}
+.gb-reveal{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 0}
+.gb-reveal input,.gb-cform input{min-height:34px;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--page);color:var(--ink);padding:4px 9px;font:inherit;font-size:16px;min-width:0}
+.gb-reveal input{width:170px}
+.gb-reveal button,.gb-cform button{min-height:34px;padding:4px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.gb-reveal button.go,.gb-cform button.go{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.gb-reveal .gb-msg{flex-basis:100%;margin:0;font-size:12px;color:var(--muted);min-height:1.2em}
+.gb-thread{margin:12px 0 0;padding:4px 14px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.gb-clist{list-style:none;margin:0;padding:0}
+.gb-c{display:flex;gap:8px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.gb-c:before{content:"ㄴ";color:var(--muted);font-size:13px;line-height:1.6;flex:none}
+.gb-c-main{flex:1;min-width:0}
+.gb-c .gb-name{font-size:13px}
+.gb-c .gb-text{margin-top:2px;font-size:14px}
+.gb-cempty{padding:12px 0 4px;font-size:13px;color:var(--muted);border-bottom:1px dashed var(--line)}
+.gb-cform{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.gb-cform .cname{flex:0 1 110px}
+.gb-cform .ctext{flex:1 1 200px}
+.gb-cform .gb-msg{flex-basis:100%;margin:0;font-size:12px;color:var(--muted);min-height:1.2em}
+.gb-cform .gb-msg:empty,.gb-reveal .gb-msg:empty{display:none}
+.gb-text{margin:6px 0 0;font-size:15px;line-height:1.7;color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+.gb-text.is-secret{color:var(--muted);font-size:14px}
+.gb-empty{padding:44px 0;text-align:center;color:var(--muted);font-size:14px;border-bottom:1px solid var(--line)}
+.gb-more{display:block;width:100%;margin:14px 0 0;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.gb-more:hover{border-color:var(--strong-line)}
+.gb [hidden]{display:none!important}
+.gb-admin{margin-top:34px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-size:12px;color:var(--muted)}
+.gb-admin-link{background:none;border:0;padding:4px 2px;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;opacity:.75}
+.gb-admin-link:hover{opacity:1;text-decoration:underline;text-underline-offset:3px}
+.gb-admin form{display:flex;gap:6px;align-items:center}
+.gb-admin form[hidden]{display:none}
+.gb-admin input{width:120px;min-height:32px;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:4px 8px;font:inherit;font-size:16px}
+.gb-admin form button{min-height:32px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-alt);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.gb-admin-on{display:inline-flex;align-items:center;gap:8px}
+.gb-admin-on b{color:var(--ink)}
+@media(max-width:540px){
+  .gb-bar input[type=text],.gb-bar input[type=password]{flex:1 1 120px}
+  .gb-len{margin-left:0}
+  .gb-submit{margin-left:auto}
+  .gb-item{gap:10px;padding:16px 2px}
+  .gb-avatar{width:34px;height:34px;font-size:14px}
+  .gb-thread{padding:2px 10px 10px}
+  .gb-cform{flex-wrap:wrap}
+  .gb-cform .cname{flex:0 0 78px}
+  .gb-cform .ctext{flex:1 1 0}
+  .gb-reveal input{flex:1 1 140px}
+}
+</style>
+<script src="/theme.js" defer></script>
+</head>
+<body>
+<header><div class="nav"><a class="logo" href="/#home">정한<span>.</span>kr</a><nav aria-label="주 메뉴"><a href="/#projects">프로젝트</a><a href="/#experience">업무 경험</a><a href="/#skills">Skills</a><a href="/utils">유틸리티</a><a href="/guestbook" aria-current="page">방명록</a><a href="/ideas">아이디어</a><a href="/games">게임</a><a href="/about">만든이</a><button id="themeToggle" class="theme-toggle" type="button" aria-label="블랙 테마로 전환" aria-pressed="true"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">블랙</span></button></nav></div></header>
+<main class="wrap gb" id="app">
+<div class="gb-head">
+<div><p class="eyebrow">GUESTBOOK</p><h1>방명록</h1></div>
+<p class="gb-count" id="gb-count" aria-live="polite"></p>
+</div>
+<p class="gb-intro">다녀가신 흔적을 남겨 주세요. 비밀글은 글쓴이(비밀번호)와 관리자만 볼 수 있어요.</p>
+<form id="write" class="gb-write" autocomplete="off">
+<label class="sr-only" for="guest-text">내용</label>
+<textarea id="guest-text" maxlength="300" required placeholder="방명록을 남겨 주세요. (300자)"></textarea>
+<div class="gb-bar">
+<label class="sr-only" for="guest-name">이름</label>
+<input id="guest-name" type="text" maxlength="20" placeholder="이름 (비우면 익명)" autocomplete="nickname">
+<label class="gb-secret"><input id="guest-private" type="checkbox"> 비밀글</label>
+<label class="sr-only" for="guest-pass">비밀글 비밀번호</label>
+<input id="guest-pass" type="password" minlength="4" maxlength="20" placeholder="비밀번호 (4~20자)" autocomplete="new-password" hidden>
+<span class="gb-len" id="gb-len" aria-hidden="true">0 / 300</span>
+<button class="gb-submit" id="gb-submit" type="submit">등록</button>
+</div>
+</form>
+<p class="gb-note" id="write-note" role="status"></p>
+<ol class="gb-list" id="entries" aria-label="방명록 글 목록 (최신순)"></ol>
+<button class="gb-more" id="gb-more" type="button" hidden>더보기</button>
+<div class="gb-admin" id="gb-admin">
+<button class="gb-admin-link" id="admin-toggle" type="button" aria-expanded="false" aria-controls="admin">관리자</button>
+<form id="admin" method="post" action="/guestbook/unlock" hidden>
+<input id="admin-pass" name="password" type="password" inputmode="numeric" autocomplete="current-password" aria-label="관리자 비밀번호" placeholder="비밀번호">
+<button type="submit">확인</button>
+</form>
+<span class="gb-note" id="admin-note" role="status"></span>
+</div>
+</main>
+<footer class="wrap"><span>© <span id="year"></span> 정한.kr</span> <a class="yt-foot" href="https://www.youtube.com/@neszal" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.8 15.5v-7l6.2 3.5-6.2 3.5z"/></svg>유튜브 @neszal</a></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+<script src="/guestbook/guestbook.js?v=20261124b" type="module"></script>
+</body>
+</html>

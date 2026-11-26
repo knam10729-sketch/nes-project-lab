@@ -81,6 +81,11 @@ test("mole hits stay unique across the room and only the host starts", () => {
   assert.equal(scored.room.data.scores[1], 1);
   const late = applyAction(scored.room, 0, { type: "hit", moleId: 4 }, playing.startedAt + 30);
   assert.equal(late.ok, false);
+  assert.equal(late.error, "둘님이 먼저 잡았어요");
+  assert.equal(scored.room.data.lastWhack.moleId, 4);
+  assert.equal(scored.room.data.lastWhack.seat, 1);
+  assert.equal(late.room.data.scores[0], 0);
+  assert.equal(late.room.data.scores[1], 1);
   const finished = applyAction(scored.room, 0, { type: "sync" }, scored.room.data.endsAt + 5);
   assert.equal(finished.room.status, "over");
   assert.equal(finished.room.winnerSeat, 1);
